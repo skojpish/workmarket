@@ -2,73 +2,166 @@ from aiogram import Router, F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram3_calendar import SimpleCalendar
 
-from database.FSM import UserText
+from database.FSM import UserText, UserCities
+from database.channels import ChannelsQs
 from database.delete_msgs import DelMsgsQs
-from database.scheduled_msgs import SchMsgsQs
-from handlers.callback_factories import UserCountryCF, UserCityCF, UserCityStatusCF, PinCF
-from keyboards.user_kbs import example_kb, back_user_text_kb, photo_user_kb, end_scheduled_user_kb
-from layouts.handlers_layouts import choice_user_country, choice_user_first_city, user_city_add, choice_user_more_city, \
-    del_messages_lo
+from handlers.callback_factories import UserCityStatusCF, PinCF, UserCityCF
+from keyboards.user_kbs import example_kb, back_user_text_kb, photo_user_kb, edit_final_kb
+from layouts.handlers_layouts import choice_user_first_city, del_messages_lo
 
 router = Router()
 
 
 @router.callback_query(F.data == 'vacancy')
-async def vacancy_country(callback: CallbackQuery):
-    await choice_user_country(callback)
+async def vacancy_start(callback: CallbackQuery, state: FSMContext):
+    await state.clear()
+    await choice_user_first_city(callback, state, 'vac')
 
 
-@router.callback_query(UserCountryCF.filter())
-async def vacancy_city(callback: CallbackQuery, callback_data: UserCountryCF):
-    await choice_user_first_city(callback, callback_data, 'vac')
+@router.callback_query(F.data == 'ad')
+async def ad_country(callback: CallbackQuery, state: FSMContext):
+    await state.clear()
+    await choice_user_first_city(callback, state, 'ad')
 
 
-@router.callback_query(UserCityCF.filter())
-async def vacancy_first_city_add(callback: CallbackQuery, callback_data: UserCityCF):
-    await user_city_add(callback, callback_data)
+@router.message(UserCities.city)
+async def city_add(msg: Message, state: FSMContext):
+    await DelMsgsQs.add_msg_id(msg.from_user.id, msg.message_id)
+
+    data_check = await state.get_data()
+
+    if 'cities' in data_check:
+        cities_all = await ChannelsQs.get_cities(data_check['cat'])
+        user_cities = data_check['cities'].split()
+        cities_list = [city[0] for city in cities_all if city[0] not in user_cities]
+    else:
+        cities = await ChannelsQs.get_cities(data_check['cat'])
+        cities_list = [city[0] for city in cities]
+
+    if msg.text in cities_list:
+        await del_messages_lo(msg.from_user.id)
+
+        if 'cities' in data_check:
+            await state.update_data(cities=f"{data_check['cities']} {msg.text}")
+        else:
+            await state.update_data(cities=f'{msg.text}')
+
+        def city_add_kb() -> InlineKeyboardMarkup:
+            kb = InlineKeyboardBuilder()
+            kb.button(
+                text=f"Продолжить", callback_data=UserCityStatusCF(
+                    add=False,
+                    next=True
+                )
+            )
+            if len(cities_list) > 1:
+                kb.button(
+                    text=f"Добавить еще город", callback_data=UserCityStatusCF(
+                        add=True,
+                        next=False
+                    )
+                )
+            kb.adjust(1)
+            return kb.as_markup()
+
+        new_line = '\n'
+
+        data = await state.get_data()
+
+        list_cities = data['cities'].split()
+
+        cities = await ChannelsQs.get_user_cities(list_cities, data['cat'])
+
+        await msg.answer(f"Вы выбрали следующие города:\n"
+                                         f"{new_line.join(f'{city[0]} ({city[1]} руб.)' for city in cities)}",
+                         reply_markup=city_add_kb())
+    else:
+        message = await msg.answer(f"Данного города нет в списке, попробуйте ввести название еще раз!")
+        await DelMsgsQs.add_msg_id(msg.from_user.id, message.message_id)
 
 
 @router.callback_query(UserCityStatusCF.filter(F.add))
-async def vacancy_city_add(callback: CallbackQuery, callback_data: UserCityCF):
-    await choice_user_more_city(callback, callback_data, 'vac')
+async def vacancy_city_add(callback: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    await del_messages_lo(callback.from_user.id)
+    await DelMsgsQs.add_msg_id(callback.from_user.id, callback.message.message_id)
+    await choice_user_first_city(callback, state, data['cat'])
+
+
+@router.callback_query(UserCityCF.filter(F.all))
+async def all_cities(callback: CallbackQuery, state: FSMContext):
+    data_all = await state.get_data()
+
+    cities = await ChannelsQs.get_cities(data_all['cat'])
+    cities_all = ' '.join(city[0] for city in cities)
+
+    await state.update_data(cities=cities_all)
+
+    await DelMsgsQs.add_msg_id(callback.from_user.id, callback.message.message_id)
+
+    def city_all_kb() -> InlineKeyboardMarkup:
+        kb = InlineKeyboardBuilder()
+        kb.button(
+            text=f"Продолжить", callback_data=UserCityStatusCF(
+                add=False,
+                next=True
+            )
+        )
+        kb.adjust(1)
+        return kb.as_markup()
+
+    new_line = '\n'
+
+    await callback.message.edit_text(f"Вы выбрали следующие города:\n"
+                     f"{new_line.join(f'{city[0]} ({city[1]} руб.)' for city in cities)}")
+    await callback.message.edit_reply_markup(reply_markup=city_all_kb())
 
 
 @router.callback_query(UserCityStatusCF.filter(F.next))
-async def vacancy_city_next(callback: CallbackQuery, callback_data: UserCityStatusCF):
+async def city_next(callback: CallbackQuery, state: FSMContext):
     def pin_kb() -> InlineKeyboardMarkup:
         kb = InlineKeyboardBuilder()
         kb.button(
             text="Закрепить посуточно", callback_data=PinCF(pin=True,
-                                                            country=callback_data.country,
-                                                            cities=callback_data.cities,
                                                             format='day')
         )
         kb.button(
             text="Закрепить понедельно", callback_data=PinCF(pin=True,
-                                                             country=callback_data.country,
-                                                             cities=callback_data.cities,
                                                              format='week')
         )
         kb.button(
+            text="Закрепить помесячно", callback_data=PinCF(pin=True,
+                                                            format='month')
+        )
+        kb.button(
             text="Не закреплять", callback_data=PinCF(pin=False,
-                                                      country=callback_data.country,
-                                                      cities=callback_data.cities,
                                                       format='')
         )
         kb.adjust(1)
         return kb.as_markup()
 
-    await callback.message.edit_text(f"Хотели бы вы закрепить ваше объявление в канале?\n\n"
-                                     f"Стоимость размещения с закреплением:\n"
-                                     f" + 300 руб. / сутки\n"
-                                     f" + 1500 руб. / неделя")
+    data = await state.get_data()
+
+    if data['cat'] == 'vac':
+        await callback.message.edit_text(f"Хотели бы вы закрепить ваше объявление в канале?\n\n"
+                                         f"Стоимость размещения с закреплением:\n"
+                                         f" + 300 руб./сутки\n"
+                                         f" + 1500 руб./неделя\n"
+                                         f" + 3000 руб./месяц")
+    elif data['cat'] == 'ad':
+        await callback.message.edit_text(f"Хотели бы вы закрепить ваше объявление в канале?\n\n"
+                                         f"Стоимость размещения с закреплением:\n"
+                                         f" + 500 руб./сутки\n"
+                                         f" + 2000 руб./неделя\n"
+                                         f" + 4000 руб./месяц")
     await callback.message.edit_reply_markup(reply_markup=pin_kb())
 
 
 @router.callback_query(PinCF.filter(F.pin == True))
-async def vacancy_city_add(callback: CallbackQuery, state: FSMContext, callback_data: PinCF):
-    await SchMsgsQs.add_buffer_cities(callback.from_user.id, callback_data.country, callback_data.cities)
+async def pin_true(callback: CallbackQuery, state: FSMContext, callback_data: PinCF):
+    await state.update_data(role='user')
 
     if callback_data.format == 'day':
         await state.set_state(UserText.pin_day)
@@ -78,40 +171,116 @@ async def vacancy_city_add(callback: CallbackQuery, state: FSMContext, callback_
         await state.set_state(UserText.pin_week)
         await callback.message.delete_reply_markup()
         await callback.message.edit_text(f"Напишите количество недель")
+    elif callback_data.format == 'month':
+        await state.set_state(UserText.pin_month)
+        await callback.message.delete_reply_markup()
+        await callback.message.edit_text(f"Напишите количество месяцев")
 
     await DelMsgsQs.add_msg_id(callback.from_user.id, callback.message.message_id)
+
+
+@router.callback_query(PinCF.filter(F.pin == False))
+async def pin_false(callback: CallbackQuery, state: FSMContext):
+    await state.update_data(role='user', pin=False)
+    await DelMsgsQs.add_msg_id(callback.from_user.id, callback.message.message_id)
+
+    await state.set_state(UserText.text)
+    data = await state.get_data()
+
+    if data['cat'] == 'vac':
+        await callback.message.edit_text("Пожалуйста, отправьте боту готовый текст по следующему образцу:\n"
+                                         "1. Название должности, заработная плата, адрес:\n"
+                                         "2. Обязанности:\n"
+                                         "3. Требования:\n"
+                                         "4. Мы предлагаем:\n"
+                                         "5. Контакты:\n")
+        await callback.message.edit_reply_markup(reply_markup=example_kb())
+    elif data['cat'] == 'ad':
+        await callback.message.delete_reply_markup()
+        await callback.message.edit_text("Отправьте боту текст рекламного поста")
 
 
 @router.message(UserText.pin_day)
 async def pin_days(msg: Message, state: FSMContext):
     await DelMsgsQs.add_msg_id(msg.from_user.id, msg.message_id)
 
-    await state.update_data(day=msg.text)
-    await state.set_state(UserText.text)
+    try:
+        await state.update_data(pin=True, pin_day=int(msg.text))
+        await state.set_state(UserText.text)
 
-    message = await msg.answer("Пожалуйста, отправьте боту готовый текст по следующему образцу:\n"
-                               "1. Название должности, заработная плата, адрес:\n"
-                               "2. Обязанности:\n"
-                               "3. Требования:\n"
-                               "4. Мы предлагаем:\n"
-                               "5. Контакты:\n", reply_markup=example_kb())
+        data = await state.get_data()
+
+        if data['cat'] == 'vac':
+            await state.update_data(pin_sum=data['pin_day'] * 300)
+            message = await msg.answer("Пожалуйста, отправьте боту готовый текст по следующему образцу:\n"
+                                       "1. Название должности, заработная плата, адрес:\n"
+                                       "2. Обязанности:\n"
+                                       "3. Требования:\n"
+                                       "4. Мы предлагаем:\n"
+                                       "5. Контакты:\n", reply_markup=example_kb())
+        else:
+            await state.update_data(pin_sum=data['pin_day'] * 500)
+            message = await msg.answer("Отправьте боту текст рекламного поста")
+    except ValueError:
+        await state.set_state(UserText.pin_day)
+        message = await msg.answer('Введите количество дней')
 
     await DelMsgsQs.add_msg_id(msg.from_user.id, message.message_id)
 
 
 @router.message(UserText.pin_week)
-async def pin_days(msg: Message, state: FSMContext):
+async def pin_week(msg: Message, state: FSMContext):
     await DelMsgsQs.add_msg_id(msg.from_user.id, msg.message_id)
 
-    await state.update_data(week=msg.text)
-    await state.set_state(UserText.text)
+    try:
+        await state.update_data(pin=True, pin_week=int(msg.text))
 
-    message = await msg.answer("Пожалуйста, отправьте боту готовый текст по следующему образцу:\n"
-                               "1. Название должности, заработная плата, адрес:\n"
-                               "2. Обязанности:\n"
-                               "3. Требования:\n"
-                               "4. Мы предлагаем:\n"
-                               "5. Контакты:", reply_markup=example_kb())
+        await state.set_state(UserText.text)
+
+        data = await state.get_data()
+
+        if data['cat'] == 'vac':
+            await state.update_data(pin_sum=data['pin_week']*1500)
+            message = await msg.answer("Пожалуйста, отправьте боту готовый текст по следующему образцу:\n"
+                                       "1. Название должности, заработная плата, адрес:\n"
+                                       "2. Обязанности:\n"
+                                       "3. Требования:\n"
+                                       "4. Мы предлагаем:\n"
+                                       "5. Контакты:\n", reply_markup=example_kb())
+        else:
+            await state.update_data(pin_sum=data['pin_week'] * 2000)
+            message = await msg.answer("Отправьте боту текст рекламного поста")
+    except ValueError:
+        await state.set_state(UserText.pin_week)
+        message = await msg.answer('Введите количество недель')
+
+    await DelMsgsQs.add_msg_id(msg.from_user.id, message.message_id)
+
+
+@router.message(UserText.pin_month)
+async def pin_month(msg: Message, state: FSMContext):
+    await DelMsgsQs.add_msg_id(msg.from_user.id, msg.message_id)
+
+    try:
+        await state.update_data(pin=True, pin_month=int(msg.text))
+        await state.set_state(UserText.text)
+
+        data = await state.get_data()
+
+        if data['cat'] == 'vac':
+            await state.update_data(pin_sum=data['pin_month'] * 3000)
+            message = await msg.answer("Пожалуйста, отправьте боту готовый текст по следующему образцу:\n"
+                                       "1. Название должности, заработная плата, адрес:\n"
+                                       "2. Обязанности:\n"
+                                       "3. Требования:\n"
+                                       "4. Мы предлагаем:\n"
+                                       "5. Контакты:\n", reply_markup=example_kb())
+        else:
+            await state.update_data(pin_sum=data['pin_month'] * 4000)
+            message = await msg.answer("Отправьте боту текст рекламного поста")
+    except ValueError:
+        await state.set_state(UserText.pin_week)
+        message = await msg.answer('Введите количество недель')
 
     await DelMsgsQs.add_msg_id(msg.from_user.id, message.message_id)
 
@@ -166,9 +335,14 @@ async def user_text(msg: Message, state: FSMContext):
     await DelMsgsQs.add_msg_id(msg.from_user.id, msg.message_id)
 
     await state.update_data(text=msg.text)
-    await state.set_state(UserText.photo)
+    data = await state.get_data()
 
-    message = await msg.answer("Отправьте фото к посту", reply_markup=photo_user_kb())
+    if 'edit' in data:
+        message = await msg.answer("Текст сообщения успешно изменен!", reply_markup=edit_final_kb())
+    else:
+        await state.set_state(UserText.photo)
+
+        message = await msg.answer("Отправьте фото к посту", reply_markup=photo_user_kb())
 
     await DelMsgsQs.add_msg_id(msg.from_user.id, message.message_id)
 
@@ -179,8 +353,12 @@ async def user_photo(msg: Message, state: FSMContext):
 
     if msg.photo:
         await state.update_data(photo=msg.photo[-1].file_id)
-        await state.set_state(UserText.date)
-        message = await msg.answer("Введите дату публикации в следующем формате: ДД.ММ.ГГГГ")
+        data = await state.get_data()
+
+        if 'edit' in data:
+            message = await msg.answer("Фото успешно изменено!", reply_markup=edit_final_kb())
+        else:
+            message = await msg.answer("Выберите дату публикации", reply_markup=await SimpleCalendar().start_calendar())
     else:
         await state.set_state(UserText.photo)
         message = await msg.answer("Отправьте фото к посту", reply_markup=photo_user_kb())
@@ -189,57 +367,7 @@ async def user_photo(msg: Message, state: FSMContext):
 
 
 @router.callback_query(F.data == 'without_photo_user')
-async def without_photo(callback: CallbackQuery, state: FSMContext):
-    await DelMsgsQs.del_msg_id(callback.from_user.id, callback.message.message_id)
-
-    await state.set_state(UserText.date)
-
-    await callback.message.delete_reply_markup()
-    message = await callback.message.edit_text("Введите дату публикации в следующем формате: ДД.ММ.ГГГГ")
-
-    await DelMsgsQs.add_msg_id(callback.from_user.id, message.message_id)
-
-
-@router.message(UserText.date)
-async def msg_user_date(msg: Message, state: FSMContext):
-    await DelMsgsQs.add_msg_id(msg.from_user.id, msg.message_id)
-
-    await state.update_data(date=msg.text)
-    await state.set_state(UserText.time)
-
-    message = await msg.answer("Введите время публикации в следующем формате: ЧЧ:ММ:СС")
-
-    await DelMsgsQs.add_msg_id(msg.from_user.id, message.message_id)
-
-
-@router.message(UserText.time)
-async def user_time(msg: Message, state: FSMContext):
-    await DelMsgsQs.add_msg_id(msg.from_user.id, msg.message_id)
-    await del_messages_lo()
-
-    await state.update_data(time=msg.text)
-    data = await state.get_data()
-
-    buffer = await SchMsgsQs.get_buffer_cities(msg.from_user.id)
-
-    country = buffer[0]
-    cities = buffer[1].replace(' ', ', ')
-
-    if 'photo' in data:
-        await msg.answer_photo(data['photo'], f"Вы ввели следующие данные:\n\n"
-                                              f"{data['text']}\n\n"
-                                              f"Дата: {data['date']}\n"
-                                              f"Время: {data['time']}\n\n"
-                                              f"Страна: {country}\n"
-                                              f"Города: \n{cities}",
-                                              reply_markup=end_scheduled_user_kb(data))
-    else:
-        await msg.answer(f"Вы ввели следующие данные:\n\n"
-                              f"{data['text']}\n\n"
-                              f"Дата: {data['date']}\n"
-                              f"Время: {data['time']}\n\n"
-                              f"Страна: {country}\n"
-                              f"Города: \n{cities}",
-                              reply_markup=end_scheduled_user_kb(data))
-
+async def without_photo(callback: CallbackQuery):
+    await callback.message.edit_text("Выберите дату публикации")
+    await callback.message.edit_reply_markup(reply_markup=await SimpleCalendar().start_calendar())
 

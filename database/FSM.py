@@ -12,9 +12,13 @@ class DelChannel(StatesGroup):
     state = State()
 
 
+class EditChannel(StatesGroup):
+    name = State()
+    price_vac = State()
+    price_ad = State()
+
+
 class MsgAllChannels(StatesGroup):
-    date = State()
-    time = State()
     text = State()
     photo = State()
 
@@ -22,9 +26,10 @@ class MsgAllChannels(StatesGroup):
 class UserText(StatesGroup):
     pin_day = State()
     pin_week = State()
+    pin_month = State()
     text = State()
     photo = State()
-    date = State()
-    time = State()
 
 
+class UserCities(StatesGroup):
+    city = State()

@@ -29,13 +29,14 @@ def add_channel_kb() -> InlineKeyboardMarkup:
 def channels_management_kb() -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     kb.add(InlineKeyboardButton(
-        text="Изменить цены", callback_data="del_channel"
+        text="Изменить цены", callback_data="edit_channel_price"
     ))
     kb.add(InlineKeyboardButton(
         text="Удалить канал", callback_data="del_channel"
     ))
     kb.adjust(1)
     return kb.as_markup()
+
 
 def bot_management_kb() -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
@@ -60,6 +61,7 @@ def sch_admin_final_kb() -> InlineKeyboardMarkup:
     kb.adjust(1)
     return kb.as_markup()
 
+
 def photo_adm_kb() -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     kb.add(InlineKeyboardButton(
@@ -75,11 +77,11 @@ def end_scheduled_kb(data) -> InlineKeyboardMarkup:
         text="Подтвердить", callback_data="sch_confirm_all_msgs"
     ))
     kb.add(InlineKeyboardButton(
-        text="Изменить текст", callback_data="edit_sch_text"
+        text="Изменить текст", callback_data="edit_sch_text_adm"
     ))
     if 'photo' in data:
         kb.add(InlineKeyboardButton(
-            text="Поменять фото", callback_data="edit_sch_photo"
+            text="Поменять фото", callback_data="edit_sch_photo_adm"
         ))
     kb.add(InlineKeyboardButton(
         text="Изменить дату и время", callback_data="edit_sch_datetime"

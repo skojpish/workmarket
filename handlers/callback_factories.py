@@ -12,28 +12,39 @@ class ChannelNewCountryCF(CallbackData, prefix='cn'):
     channel_name: str
 
 
-class UserCountryCF(CallbackData, prefix='uc'):
+class MsgAllChannelsCF(CallbackData, prefix='mac'):
     country: str
 
 
 class UserCityCF(CallbackData, prefix='uci'):
-    country: str
-    cities: str
+    all: bool
 
 
 class UserCityStatusCF(CallbackData, prefix='ca'):
     add: bool = False
     next: bool = False
-    country: str = ''
-    cities: str
 
 
 class PinCF(CallbackData, prefix='p'):
     pin: bool
     format: str
-    country: str
-    cities: str
 
 
 class YouMoneyCheckCF(CallbackData, prefix='ym'):
     msg_id: int
+
+
+class TimePickerCF(CallbackData, prefix='tp'):
+    up_hour: bool = False
+    down_hour: bool = False
+    up_min: bool = False
+    down_min: bool = False
+    confirm: bool = False
+    value: int = 0
+    hour_cur: int = 0
+    minute_cur: int = 0
+
+
+class EditPriceCF(CallbackData, prefix='ep'):
+    cat: str
+    channel_name: str

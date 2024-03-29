@@ -1,31 +1,33 @@
-from datetime import datetime, date
+from datetime import datetime
 
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from database.channels import ChannelsQs
 from database.channelsandmsgs import ChannelsAndMsgsQs
 from database.db_conn import async_session_factory
-from database.models import ScheduledMsgs, BufferCities
-from handlers.schedulers import add_scheduler_job
+from database.models import ScheduledMsgs, ChannelsAndMsgs
+from handlers.schedulers import add_sch_msg_job
 
 
 class SchMsgsQs:
     @staticmethod
-    async def add_sch_msg_adm(user_id: int, date_time: datetime, text: str, photo: str = None, pin: date = None):
+    async def add_sch_msg_adm(user_id: int, date_time: datetime, text: str, country: str, photo: str = None):
         try:
             async with async_session_factory() as session:
-                stmt = ScheduledMsgs(user_id=user_id, msg_text=text, date_time=date_time, photo=photo, pin=pin)
+                stmt = ScheduledMsgs(user_id=user_id, msg_text=text, date_time=date_time, photo=photo)
                 session.add(stmt)
                 await session.commit()
 
-                channels = await ChannelsQs.get_channels_id_ref_admin()
+                channels = await ChannelsQs.get_channels_id_ref_admin(country)
                 await ChannelsAndMsgsQs.add_ref(stmt.id, channels)
-                await add_scheduler_job(stmt.id, stmt.date_time)
+                await add_sch_msg_job(stmt.id, stmt.date_time)
         except Exception as e:
             print(e)
 
     @staticmethod
-    async def add_sch_msg_user(user_id: int, date_time: datetime, text: str, cities: str, photo: str = None, pin: date = None):
+    async def add_sch_msg_user(user_id: int, date_time: datetime, text: str, cities: str, photo: str = None,
+                               pin: datetime = None):
         try:
             async with async_session_factory() as session:
                 stmt = ScheduledMsgs(user_id=user_id, msg_text=text, date_time=date_time, photo=photo, pin=pin)
@@ -36,39 +38,51 @@ class SchMsgsQs:
 
                 channels = await ChannelsQs.get_channels_id_ref_user(cities_list)
                 await ChannelsAndMsgsQs.add_ref(stmt.id, channels)
-                await add_scheduler_job(stmt.id, stmt.date_time)
+                await add_sch_msg_job(stmt.id, stmt.date_time)
         except Exception as e:
             print(e)
 
     @staticmethod
-    async def add_buffer_cities(user_id: int, country: str, cities: str):
+    async def get_sch_msgs_user(user_id: int):
         try:
             async with async_session_factory() as session:
-                stmt = BufferCities(user_id=user_id, country=country, cities=cities)
-                session.add(stmt)
-                await session.commit()
-        except Exception as e:
-            print(e)
-
-    @staticmethod
-    async def get_buffer_cities(user_id: int):
-        try:
-            async with async_session_factory() as session:
-                query = select(BufferCities.country, BufferCities.cities).where(BufferCities.user_id == user_id)
+                query = select(ScheduledMsgs.id, ScheduledMsgs.msg_text, ScheduledMsgs.date_time).where(
+                    ScheduledMsgs.user_id == user_id).order_by(ScheduledMsgs.date_time)
                 res = await session.execute(query)
-                buffer = res.one()
+                sch_msgs = res.all()
+
         except Exception as e:
             print(e)
         else:
-            return buffer
-
+            return sch_msgs
 
     @staticmethod
-    async def del_buffer(user_id: int, country: str, cities: str):
+    async def check_time(date_time, cities):
         try:
             async with async_session_factory() as session:
-                stmt = BufferCities(user_id=user_id, country=country, cities=cities)
-                session.add(stmt)
-                await session.commit()
+                query = select(ScheduledMsgs.id, ScheduledMsgs.date_time).where(
+                    ScheduledMsgs.date_time == date_time)
+                res = await session.execute(query)
+                exist = res.all()
+
+                if exist:
+                    cities_list = cities.split()
+
+                    query = select(ChannelsAndMsgs).where(
+                        ChannelsAndMsgs.msg_id == exist[0][0]).options(selectinload(ChannelsAndMsgs.channel))
+                    res = await session.execute(query)
+                    channels_ref = res.scalars().all()
+
+                    for ref in channels_ref:
+                        if ref.channel.city in cities_list:
+                            flag = True
+                            break
+                        else:
+                            flag = False
+                else:
+                    flag = False
+
         except Exception as e:
             print(e)
+        else:
+            return flag

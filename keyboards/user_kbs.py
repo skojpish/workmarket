@@ -35,14 +35,23 @@ def end_scheduled_user_kb(data) -> InlineKeyboardMarkup:
         text="Оплатить и разместить", callback_data="payment_methods"
     ))
     kb.add(InlineKeyboardButton(
-        text="Изменить текст", callback_data="edit_sch_text"
+        text="Изменить текст", callback_data="edit_sch_text_user"
     ))
     if 'photo' in data:
         kb.add(InlineKeyboardButton(
-            text="Поменять фото", callback_data="edit_sch_photo"
+            text="Поменять фото", callback_data="edit_sch_photo_user"
         ))
     kb.add(InlineKeyboardButton(
         text="Изменить дату и время", callback_data="edit_sch_datetime"
+    ))
+    kb.adjust(1)
+    return kb.as_markup()
+
+
+def edit_final_kb() -> InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    kb.add(InlineKeyboardButton(
+        text="Перейти к заявке", callback_data="back_to_order"
     ))
     kb.adjust(1)
     return kb.as_markup()
