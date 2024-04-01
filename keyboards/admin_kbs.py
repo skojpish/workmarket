@@ -1,6 +1,8 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
+from handlers.callback_factories import ListOfChannelsCF
+
 
 def admin_kb() -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
@@ -19,21 +21,9 @@ def admin_kb() -> InlineKeyboardMarkup:
 
 def add_channel_kb() -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
-    kb.add(InlineKeyboardButton(
-        text="Список каналов", callback_data="channels"
-    ))
-    kb.adjust(1)
-    return kb.as_markup()
-
-
-def channels_management_kb() -> InlineKeyboardMarkup:
-    kb = InlineKeyboardBuilder()
-    kb.add(InlineKeyboardButton(
-        text="Изменить цены", callback_data="edit_channel_price"
-    ))
-    kb.add(InlineKeyboardButton(
-        text="Удалить канал", callback_data="del_channel"
-    ))
+    kb.button(
+        text="Список каналов", callback_data=ListOfChannelsCF(starting_point=0)
+    )
     kb.adjust(1)
     return kb.as_markup()
 
@@ -43,9 +33,9 @@ def bot_management_kb() -> InlineKeyboardMarkup:
     kb.add(InlineKeyboardButton(
         text="Отправить сообщение во все каналы", callback_data="msg_all_channels"
     ))
-    kb.add(InlineKeyboardButton(
-        text="Список каналов", callback_data="channels"
-    ))
+    kb.button(
+        text="Список каналов", callback_data=ListOfChannelsCF(starting_point=0)
+    )
     kb.adjust(1)
     return kb.as_markup()
 

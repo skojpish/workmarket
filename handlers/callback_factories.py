@@ -2,14 +2,12 @@ from aiogram.filters.callback_data import CallbackData
 
 
 class ChannelCountryCF(CallbackData, prefix='c'):
-    channel_id: int
-    channel_name: str
+    channel: int
     country: str
 
 
 class ChannelNewCountryCF(CallbackData, prefix='cn'):
-    channel_id: int
-    channel_name: str
+    channel: int
 
 
 class MsgAllChannelsCF(CallbackData, prefix='mac'):
@@ -48,3 +46,7 @@ class TimePickerCF(CallbackData, prefix='tp'):
 class EditPriceCF(CallbackData, prefix='ep'):
     cat: str
     channel_name: str
+
+
+class ListOfChannelsCF(CallbackData, prefix='loc'):
+    starting_point: int = 0

@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import BigInteger, text, ForeignKey
+from sqlalchemy import BigInteger, ForeignKey
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -51,3 +51,11 @@ class ChannelsAndMsgs(Base):
 
     msg: Mapped['ScheduledMsgs'] = relationship(back_populates="msg_id_ref", cascade="all,delete")
     channel: Mapped['Channels'] = relationship(back_populates="channel_id_ref")
+
+
+class ChannelsInfo(Base):
+    __tablename__ = "channels_info"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    ch_id: Mapped[int] = mapped_column(BigInteger)
+    ch_name: Mapped[str]

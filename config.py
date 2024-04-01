@@ -11,6 +11,15 @@ bot = Bot(token, parse_mode="HTML")
 pay_token = getenv("PAYMENT_TOKEN")
 
 master_id = int(getenv("MASTER_ID"))
+master_id1 = int(getenv("MASTER_ID1"))
+master_id2 = int(getenv("MASTER_ID2"))
+master_id3 = int(getenv("MASTER_ID3"))
+master_id4 = int(getenv("MASTER_ID4"))
+master_id5 = int(getenv("MASTER_ID5"))
+master_id6 = int(getenv("MASTER_ID6"))
+
+masters = [master_id, master_id1, master_id2, master_id3, master_id4, master_id5, master_id6]
+
 
 db_user = getenv("DB_USER")
 db_pass = getenv("DB_PASS")

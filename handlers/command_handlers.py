@@ -2,7 +2,7 @@ from aiogram import Router, F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, BotCommand
 
-from config import master_id, bot
+from config import bot, masters
 from database.channelsandmsgs import ChannelsAndMsgsQs
 from database.delete_msgs import DelMsgsQs
 from database.scheduled_msgs import SchMsgsQs
@@ -24,7 +24,7 @@ async def setup_bot_commands():
 @router.message((F.text == '/start') | (F.text == '/menu'))
 async def cmd_start(msg: Message, state: FSMContext) -> None:
     await del_messages_lo(msg.from_user.id)
-    if msg.from_user.id == master_id:
+    if msg.from_user.id in masters:
         await start_message_lo(msg, state, admin_kb)
     else:
         await start_message_lo(msg, state, start_kb)

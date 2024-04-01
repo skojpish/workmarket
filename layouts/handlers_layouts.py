@@ -122,4 +122,3 @@ async def order_message_lo(callback, state, data):
                                           reply_markup=end_scheduled_user_kb(data))
     await del_messages_lo(callback.from_user.id)
     await DelMsgsQs.add_msg_id(callback.from_user.id, message.message_id)
-

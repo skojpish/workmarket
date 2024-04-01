@@ -1,7 +1,7 @@
 from sqlalchemy import select, update, delete, distinct
 
 from database.db_conn import async_session_factory
-from database.models import Channels
+from database.models import Channels, ChannelsInfo
 
 
 class ChannelsQs:
@@ -52,11 +52,11 @@ class ChannelsQs:
             return cities
 
     @staticmethod
-    async def get_channels():
+    async def get_channels(starting_point):
         try:
             async with async_session_factory() as session:
                 query = select(Channels.channel_name, Channels.country, Channels.price_vac, Channels.price_ad).order_by(
-                    Channels.channel_name)
+                    Channels.channel_name).limit(11).offset(starting_point)
                 res = await session.execute(query)
                 channels = res.all()
         except Exception as e:
@@ -134,3 +134,31 @@ class ChannelsQs:
                 await session.commit()
         except Exception as e:
             print(e)
+
+    @staticmethod
+    async def add_channel_callback(ch_id: int, ch_name: str):
+        try:
+            async with async_session_factory() as session:
+                stmt = ChannelsInfo(ch_id=ch_id, ch_name=ch_name)
+                session.add(stmt)
+                await session.commit()
+        except Exception as e:
+            print(e)
+        else:
+            return stmt.id
+
+    @staticmethod
+    async def get_ch_info(callback_id: int):
+        try:
+            async with async_session_factory() as session:
+                query = select(ChannelsInfo.ch_id, ChannelsInfo.ch_name).where(ChannelsInfo.id == callback_id)
+                res = await session.execute(query)
+                channel = res.one()
+
+                query = delete(ChannelsInfo).where(ChannelsInfo.id == callback_id)
+                await session.execute(query)
+                await session.commit()
+        except Exception as e:
+            print(e)
+        else:
+            return channel
