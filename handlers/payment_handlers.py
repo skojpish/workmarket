@@ -134,10 +134,9 @@ async def payment_payok(callback: CallbackQuery, state: FSMContext):
     amount = data['full_sum']
     label = f'{callback.from_user.id}{callback.message.message_id}'
     shop_id = payok_shop_id
-    currency = 'RUB'
+    currency = 'BYN'
     desc = 'WorkMarketBot'
     secret = payok_sk
-
 
     sign = hashlib.md5(f"{amount}|{label}|{shop_id}|{currency}|{desc}|{secret}".encode(
         'utf-8')).hexdigest()
@@ -172,11 +171,10 @@ async def check_payok(callback: CallbackQuery, state: FSMContext):
                           'payment': int(f'{callback.from_user.id}{callback.message.message_id}')}
         async with session.post('https://payok.io/api/transaction', data=request_params) as response:
             operation = await response.json(content_type=None)
-            print(operation)
             operation_keys = list(operation.keys())
 
     try:
-        if operation[f'{operation_keys[1]}']['transaction_status'] == 1:
+        if operation[f'{operation_keys[1]}']['transaction_status']:
             data = await state.get_data()
             date_time = f"{data['date_cal']} {data['time']}"
 
