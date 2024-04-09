@@ -23,13 +23,18 @@ class UserCityStatusCF(CallbackData, prefix='ca'):
     next: bool = False
 
 
+class AdminCityCF(CallbackData, prefix='aci'):
+    all: bool
+
+
+class AdminCityStatusCF(CallbackData, prefix='acs'):
+    add: bool = False
+    next: bool = False
+
+
 class PinCF(CallbackData, prefix='p'):
     pin: bool
     format: str
-
-
-class YouMoneyCheckCF(CallbackData, prefix='ym'):
-    msg_id: int
 
 
 class TimePickerCF(CallbackData, prefix='tp'):
@@ -50,3 +55,9 @@ class EditPriceCF(CallbackData, prefix='ep'):
 
 class ListOfChannelsCF(CallbackData, prefix='loc'):
     starting_point: int = 0
+
+
+class EditPostCF(CallbackData, prefix='ep'):
+    msg_id: int
+    text: bool = False
+    photo: bool = False

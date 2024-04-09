@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import selectinload
 
 from database.channels import ChannelsQs
@@ -11,20 +11,6 @@ from handlers.schedulers import add_sch_msg_job
 
 
 class SchMsgsQs:
-    @staticmethod
-    async def add_sch_msg_adm(user_id: int, date_time: datetime, text: str, country: str, photo: str = None):
-        try:
-            async with async_session_factory() as session:
-                stmt = ScheduledMsgs(user_id=user_id, msg_text=text, date_time=date_time, photo=photo)
-                session.add(stmt)
-                await session.commit()
-
-                channels = await ChannelsQs.get_channels_id_ref_admin(country)
-                await ChannelsAndMsgsQs.add_ref(stmt.id, channels)
-                await add_sch_msg_job(stmt.id, stmt.date_time)
-        except Exception as e:
-            print(e)
-
     @staticmethod
     async def add_sch_msg_user(user_id: int, date_time: datetime, text: str, cities: str, photo: str = None,
                                pin: datetime = None):
@@ -50,6 +36,20 @@ class SchMsgsQs:
                     ScheduledMsgs.user_id == user_id).order_by(ScheduledMsgs.date_time)
                 res = await session.execute(query)
                 sch_msgs = res.all()
+
+        except Exception as e:
+            print(e)
+        else:
+            return sch_msgs
+
+    @staticmethod
+    async def get_sch_msg(msg_id: int):
+        try:
+            async with async_session_factory() as session:
+                query = select(ScheduledMsgs.photo, ScheduledMsgs.msg_text, ScheduledMsgs.date_time).where(
+                    ScheduledMsgs.id == msg_id)
+                res = await session.execute(query)
+                sch_msgs = res.one()
 
         except Exception as e:
             print(e)
@@ -86,3 +86,23 @@ class SchMsgsQs:
             print(e)
         else:
             return flag
+
+    @staticmethod
+    async def update_text(msg_id: int, text):
+        try:
+            async with async_session_factory() as session:
+                stmt = update(ScheduledMsgs).where(ScheduledMsgs.id == msg_id).values(msg_text=text)
+                await session.execute(stmt)
+                await session.commit()
+        except Exception as e:
+            print(e)
+
+    @staticmethod
+    async def update_photo(msg_id: int, photo):
+        try:
+            async with async_session_factory() as session:
+                stmt = update(ScheduledMsgs).where(ScheduledMsgs.id == msg_id).values(photo=photo)
+                await session.execute(stmt)
+                await session.commit()
+        except Exception as e:
+            print(e)

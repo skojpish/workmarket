@@ -1,13 +1,14 @@
 from datetime import timedelta, datetime
 
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from config import bot
-from database.FSM import UserCities
+from database.FSM import UserCities, AdminCities
 from database.channels import ChannelsQs
 from database.delete_msgs import DelMsgsQs
-from handlers.callback_factories import UserCityCF
+from handlers.callback_factories import UserCityCF, AdminCityCF
 from keyboards.admin_kbs import end_scheduled_kb
 from keyboards.user_kbs import end_scheduled_user_kb
 
@@ -71,20 +72,65 @@ async def choice_user_first_city(callback, state, cat):
         await callback.answer()
 
 
+async def choice_admin_city(callback, state, country):
+    data = await state.get_data()
+
+    if 'cities' in data:
+        cities_all = await ChannelsQs.get_cities_admin(country)
+        user_cities = data['cities'].split()
+        cities = [city for city in cities_all if city not in user_cities]
+    else:
+        cities = await ChannelsQs.get_cities_admin(country)
+
+    def city_kb() -> InlineKeyboardMarkup:
+        kb = InlineKeyboardBuilder()
+        kb.button(
+            text=f"Во всех городах", callback_data=AdminCityCF(
+                all=True)
+        )
+        kb.adjust(1)
+        return kb.as_markup()
+
+    new_line = '\n'
+
+    await state.set_state(AdminCities.city)
+
+    if cities:
+        await callback.message.edit_text(f"Напишите название города из списка представленного ниже:\n\n"
+                                         f"{new_line.join(f'{cities.index(city)+1}. {city}' for city in cities)}")
+        await callback.message.edit_reply_markup(reply_markup=city_kb())
+    else:
+        await callback.answer()
+
+
 async def order_message_lo(callback, state, data):
     await callback.answer()
+
+    message_photo = None
+
     if data['role'] == 'admin':
         if 'photo' in data:
-            message = await callback.message.answer_photo(data['photo'], f"Вы ввели следующие данные:\n"
-                                                               f"Сообщение: {data['text']}\n"
-                                                               f"Дата: {data['date_cal']}\n"
-                                                               f"Время: {data['time']}",
-                                                reply_markup=end_scheduled_kb(data))
+            try:
+                message = await callback.message.answer_photo(data['photo'], f"Вы ввели следующие данные:\n"
+                                                                   f"Сообщение: {data['text']}\n"
+                                                                   f"Дата: {data['date_cal']}\n"
+                                                                   f"Время: {data['time']}\n"
+                                                                   f"Города: {data['cities']}",
+                                                    reply_markup=end_scheduled_kb(data))
+            except TelegramBadRequest:
+                message_photo = await callback.message.answer_photo(data['photo'])
+                message = await callback.message.answer(f"Вы ввели следующие данные:\n"
+                                                                   f"Сообщение: {data['text']}\n"
+                                                                   f"Дата: {data['date_cal']}\n"
+                                                                   f"Время: {data['time']}\n"
+                                                                   f"Города: {data['cities']}",
+                                                    reply_markup=end_scheduled_kb(data))
         else:
             message = await callback.message.answer(f"Вы ввели следующие данные:\n"
-                                          f"Сообщение: {data['text']}\n"
-                                          f"Дата: {data['date_cal']}\n"
-                                          f"Время: {data['time']}",
+                                                    f"Сообщение: {data['text']}\n"
+                                                    f"Дата: {data['date_cal']}\n"
+                                                    f"Время: {data['time']}"
+                                                    f"Города: {data['cities']}",
                                           reply_markup=end_scheduled_kb(data))
     else:
         if data['pin']:
@@ -105,13 +151,23 @@ async def order_message_lo(callback, state, data):
             pin = "Не закреплять"
 
         if 'photo' in data:
-            message = await callback.message.answer_photo(data['photo'], f"Вы ввели следующие данные:\n\n"
-                                                               f"{data['text']}\n\n"
-                                                               f"Дата: {data['date_cal']}\n"
-                                                               f"Время: {data['time']}\n"
-                                                               f"Закрепление: {pin}\n\n"
-                                                               f"Города: {data['cities']}",
-                                                reply_markup=end_scheduled_user_kb(data))
+            try:
+                message = await callback.message.answer_photo(data['photo'], f"Вы ввели следующие данные:\n\n"
+                                                                   f"{data['text']}\n\n"
+                                                                   f"Дата: {data['date_cal']}\n"
+                                                                   f"Время: {data['time']}\n"
+                                                                   f"Закрепление: {pin}\n\n"
+                                                                   f"Города: {data['cities']}",
+                                                    reply_markup=end_scheduled_user_kb(data))
+            except TelegramBadRequest:
+                message_photo = await callback.message.answer_photo(data['photo'])
+                message = await callback.message.answer(f"Вы ввели следующие данные:\n\n"
+                                                                             f"{data['text']}\n\n"
+                                                                             f"Дата: {data['date_cal']}\n"
+                                                                             f"Время: {data['time']}\n"
+                                                                             f"Закрепление: {pin}\n\n"
+                                                                             f"Города: {data['cities']}",
+                                                              reply_markup=end_scheduled_user_kb(data))
         else:
             message = await callback.message.answer(f"Вы ввели следующие данные:\n\n"
                                           f"{data['text']}\n\n"
@@ -121,4 +177,8 @@ async def order_message_lo(callback, state, data):
                                           f"Города: {data['cities']}",
                                           reply_markup=end_scheduled_user_kb(data))
     await del_messages_lo(callback.from_user.id)
+
     await DelMsgsQs.add_msg_id(callback.from_user.id, message.message_id)
+
+    if message_photo is not None:
+        await DelMsgsQs.add_msg_id(callback.from_user.id, message_photo.message_id)

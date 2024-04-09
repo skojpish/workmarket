@@ -55,3 +55,12 @@ def edit_final_kb() -> InlineKeyboardMarkup:
     ))
     kb.adjust(1)
     return kb.as_markup()
+
+
+def edit_posts_kb() -> InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    kb.button(
+        text="Отредактировать содержание публикации", callback_data="edit_post"
+    )
+    kb.adjust(1)
+    return kb.as_markup()

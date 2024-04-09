@@ -35,6 +35,19 @@ class ChannelsQs:
             return cities
 
     @staticmethod
+    async def get_cities_admin(country: str):
+        try:
+            async with async_session_factory() as session:
+                query = select(Channels.city).where(Channels.country == country).order_by(
+                    Channels.city)
+                res = await session.execute(query)
+                cities = res.all()
+        except Exception as e:
+            print(e)
+        else:
+            return cities
+
+    @staticmethod
     async def get_user_cities(cities: list, cat: str):
         try:
             async with async_session_factory() as session:

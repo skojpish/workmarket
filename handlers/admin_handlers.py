@@ -10,16 +10,16 @@ from aiogram3_calendar import SimpleCalendar
 from aiogram3_calendar.calendar_types import SimpleCalendarCallback
 
 from config import bot, master_id
-from database.FSM import AddChannel, DelChannel, MsgAllChannels
+from database.FSM import AddChannel, DelChannel, MsgAllChannels, AdminCities
 from database.channels import ChannelsQs
 from database.delete_msgs import DelMsgsQs
 from database.scheduled_msgs import SchMsgsQs
 from handlers.callback_factories import TimePickerCF, ChannelCountryCF, ChannelNewCountryCF, MsgAllChannelsCF, \
-    ListOfChannelsCF
+    ListOfChannelsCF, AdminCityCF, AdminCityStatusCF
 from keyboards.admin_kbs import add_channel_kb, bot_management_kb, photo_adm_kb
 from keyboards.time_picker import time_picker_kb
 from keyboards.user_kbs import edit_final_kb
-from layouts.handlers_layouts import del_messages_lo, order_message_lo
+from layouts.handlers_layouts import del_messages_lo, order_message_lo, choice_admin_city
 
 router = Router()
 
@@ -283,10 +283,112 @@ async def add_country_admin(callback: CallbackQuery, callback_data: MsgAllChanne
 
     await state.clear()
     await state.update_data(role='admin', country=callback_data.country)
-    await state.set_state(MsgAllChannels.text)
+    await state.set_state(AdminCities.city)
 
+    await choice_admin_city(callback, state, callback_data.country)
+
+    await DelMsgsQs.add_msg_id(callback.from_user.id, callback.message.message_id)
+
+
+@router.message(AdminCities.city)
+async def admin_city_add(msg: Message, state: FSMContext):
+    await DelMsgsQs.add_msg_id(msg.from_user.id, msg.message_id)
+
+    data_check = await state.get_data()
+
+    if 'cities' in data_check:
+        cities_all = await ChannelsQs.get_cities_admin(data_check['country'])
+        user_cities = data_check['cities'].split()
+        cities_list = [city[0] for city in cities_all if city[0] not in user_cities]
+    else:
+        cities = await ChannelsQs.get_cities_admin(data_check['country'])
+        cities_list = [city[0] for city in cities]
+
+    if msg.text in cities_list:
+        await del_messages_lo(msg.from_user.id)
+
+        if 'cities' in data_check:
+            await state.update_data(cities=f"{data_check['cities']} {msg.text}")
+        else:
+            await state.update_data(cities=f'{msg.text}')
+
+        def city_add_kb() -> InlineKeyboardMarkup:
+            kb = InlineKeyboardBuilder()
+            kb.button(
+                text=f"Продолжить", callback_data=AdminCityStatusCF(
+                    add=False,
+                    next=True
+                )
+            )
+            if len(cities_list) > 1:
+                kb.button(
+                    text=f"Добавить еще город", callback_data=AdminCityStatusCF(
+                        add=True,
+                        next=False
+                    )
+                )
+            kb.adjust(1)
+            return kb.as_markup()
+
+        new_line = '\n'
+
+        data = await state.get_data()
+
+        cities = data['cities'].split()
+
+        await msg.answer(f"Вы выбрали следующие города:\n"
+                         f"{new_line.join(f'{city}' for city in cities)}",
+                         reply_markup=city_add_kb())
+    else:
+        message = await msg.answer(f"Данного города нет в списке, попробуйте ввести название еще раз!")
+        await state.set_state(AdminCities.city)
+        await DelMsgsQs.add_msg_id(msg.from_user.id, message.message_id)
+
+
+@router.callback_query(AdminCityStatusCF.filter(F.add))
+async def admin_city_add(callback: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    await del_messages_lo(callback.from_user.id)
+    await DelMsgsQs.add_msg_id(callback.from_user.id, callback.message.message_id)
+    await choice_admin_city(callback, state, data['country'])
+
+
+@router.callback_query(AdminCityCF.filter(F.all))
+async def admin_cities(callback: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+
+    cities = await ChannelsQs.get_cities_admin(data['country'])
+    cities_all = ' '.join(city[0] for city in cities)
+
+    await state.update_data(cities=cities_all)
+
+    await DelMsgsQs.add_msg_id(callback.from_user.id, callback.message.message_id)
+
+    def city_all_kb() -> InlineKeyboardMarkup:
+        kb = InlineKeyboardBuilder()
+        kb.button(
+            text=f"Продолжить", callback_data=AdminCityStatusCF(
+                add=False,
+                next=True
+            )
+        )
+        kb.adjust(1)
+        return kb.as_markup()
+
+    new_line = '\n'
+
+    await callback.message.edit_text(f"Вы выбрали следующие города:\n"
+                                     f"{new_line.join(f'{city}' for city in cities)}")
+    await callback.message.edit_reply_markup(reply_markup=city_all_kb())
+
+
+@router.callback_query(AdminCityStatusCF.filter(F.next))
+async def admin_city_next(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+
+    await state.set_state(MsgAllChannels.text)
     await callback.message.delete_reply_markup()
-    await callback.message.edit_text("Напишите сообщение")
+    await callback.message.edit_text("Напишите текст сообщения")
 
     await DelMsgsQs.add_msg_id(callback.from_user.id, callback.message.message_id)
 
@@ -442,7 +544,7 @@ async def get_scheduled_info(callback: CallbackQuery, state: FSMContext):
         'user_id': callback.from_user.id,
         'date_time': datetime.strptime(date_time, "%d.%m.%Y %H:%M"),
         'text': data['text'],
-        'country': data['country']
+        'cities': data['cities']
     }
 
     if 'photo' in data:
@@ -455,7 +557,7 @@ async def get_scheduled_info(callback: CallbackQuery, state: FSMContext):
         message = await callback.message.edit_text("Сообщение успешно запланировано!")
 
     await DelMsgsQs.add_msg_id(callback.from_user.id, message.message_id)
-    await SchMsgsQs.add_sch_msg_adm(**d)
+    await SchMsgsQs.add_sch_msg_user(**d)
     await state.clear()
 
 

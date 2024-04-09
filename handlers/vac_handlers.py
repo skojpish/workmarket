@@ -79,6 +79,7 @@ async def city_add(msg: Message, state: FSMContext):
                          reply_markup=city_add_kb())
     else:
         message = await msg.answer(f"Данного города нет в списке, попробуйте ввести название еще раз!")
+        await state.set_state(UserCities.city)
         await DelMsgsQs.add_msg_id(msg.from_user.id, message.message_id)
 
 

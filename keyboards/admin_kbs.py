@@ -31,7 +31,7 @@ def add_channel_kb() -> InlineKeyboardMarkup:
 def bot_management_kb() -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     kb.add(InlineKeyboardButton(
-        text="Отправить сообщение во все каналы", callback_data="msg_all_channels"
+        text="Отправить сообщение в каналы", callback_data="msg_all_channels"
     ))
     kb.button(
         text="Список каналов", callback_data=ListOfChannelsCF(starting_point=0)

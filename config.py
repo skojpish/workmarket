@@ -8,7 +8,12 @@ load_dotenv('.env')
 token = getenv("TOKEN")
 bot = Bot(token, parse_mode="HTML")
 
-pay_token = getenv("PAYMENT_TOKEN")
+youmoney_token = getenv("YOUMONEY_TOKEN")
+
+payok_token = getenv("PAYOK_TOKEN")
+payok_sk = getenv("PAYOK_SK")
+payok_shop_id = getenv("PAYOK_SHOP_ID")
+payok_api_id = getenv("PAYOK_API_ID")
 
 master_id = int(getenv("MASTER_ID"))
 master_id1 = int(getenv("MASTER_ID1"))

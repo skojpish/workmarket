@@ -33,3 +33,13 @@ class UserText(StatesGroup):
 
 class UserCities(StatesGroup):
     city = State()
+
+
+class AdminCities(StatesGroup):
+    city = State()
+
+
+class EditPost(StatesGroup):
+    number = State()
+    text = State()
+    photo = State()

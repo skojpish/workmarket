@@ -1,20 +1,21 @@
+import hashlib
 from datetime import datetime
 
+import aiohttp
 from aiogram import Router, F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from yoomoney import Client, Quickpay
 
-from config import pay_token
+from config import youmoney_token, payok_shop_id, payok_sk, payok_api_id, payok_token
 from database.channels import ChannelsQs
 from database.delete_msgs import DelMsgsQs
 from database.scheduled_msgs import SchMsgsQs
-from handlers.callback_factories import YouMoneyCheckCF
 from layouts.handlers_layouts import del_messages_lo
 
 router = Router()
-client = Client(pay_token)
+client = Client(youmoney_token)
 
 
 @router.callback_query(F.data == 'payment_methods')
@@ -25,6 +26,9 @@ async def payment_methods(callback: CallbackQuery, state: FSMContext):
         kb = InlineKeyboardBuilder()
         kb.add(InlineKeyboardButton(
             text="Юmoney", callback_data='youmoney'
+        ))
+        kb.add(InlineKeyboardButton(
+            text="Payok", callback_data='payok'
         ))
         kb.adjust(1)
         return kb.as_markup()
@@ -52,7 +56,7 @@ async def payment_methods(callback: CallbackQuery, state: FSMContext):
 
 
 @router.callback_query(F.data == 'youmoney')
-async def payment_youmoney_check(callback: CallbackQuery, state: FSMContext):
+async def payment_youmoney(callback: CallbackQuery, state: FSMContext):
     user = client.account_info()
 
     data = await state.get_data()
@@ -62,15 +66,15 @@ async def payment_youmoney_check(callback: CallbackQuery, state: FSMContext):
                        targets="WorkMarketBot",
                        paymentType="SB",
                        sum=data['full_sum'],
-                       label=f'{callback.from_user.id}{callback.message.message_id + 1}')
+                       label=f'{callback.from_user.id}{callback.message.message_id}')
 
-    def youmoney_check_kb() -> InlineKeyboardMarkup:
+    def youmoney_kb() -> InlineKeyboardMarkup:
         kb = InlineKeyboardBuilder()
         kb.add(InlineKeyboardButton(
             text="Ссылка на оплату", url=f'{pay_url.redirected_url}'
         ))
         kb.button(
-            text="Проверить оплату", callback_data=YouMoneyCheckCF(msg_id=callback.message.message_id)
+            text="Проверить оплату", callback_data='youmoney_check'
         )
         kb.add(InlineKeyboardButton(
             text="Связаться с менеджером", callback_data='help'
@@ -79,16 +83,16 @@ async def payment_youmoney_check(callback: CallbackQuery, state: FSMContext):
         return kb.as_markup()
 
     await callback.message.edit_text(f"Сумма на оплату: {data['full_sum']} руб.\n\n"
-                                     f"<b>Как произведете оплату, ОБЯЗАТЕЛЬНО нажмите на кнопку ниже!</b>\n\n"
+                                     f"<b>Как произведете оплату, ОБЯЗАТЕЛЬНО нажмите на кнопку 'Проверить оплату'!</b>\n\n"
                                      f"Если возникнет проблема при оплате, свяжитесь с нашим менеджером")
-    await callback.message.edit_reply_markup(reply_markup=youmoney_check_kb())
+    await callback.message.edit_reply_markup(reply_markup=youmoney_kb())
 
 
-@router.callback_query(YouMoneyCheckCF.filter())
-async def check_youmoney(callback: CallbackQuery, callback_data: YouMoneyCheckCF, state: FSMContext):
+@router.callback_query(F.data == 'youmoney_check')
+async def check_youmoney(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
-    history = client.operation_history(label=f"{callback.from_user.id}{callback_data.msg_id+1}")
+    history = client.operation_history(label=f"{callback.from_user.id}{callback.message.message_id}")
     operations = history.operations
     try:
         if operations[0].status == 'success':
@@ -121,3 +125,77 @@ async def help_bot(callback: CallbackQuery):
     message = await callback.message.answer(f"Аккаунт менеджера: @alexander_ivanovsky")
 
     await DelMsgsQs.add_msg_id(callback.from_user.id, message.message_id)
+
+
+@router.callback_query(F.data == 'payok')
+async def payment_payok(callback: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+
+    amount = data['full_sum']
+    label = f'{callback.from_user.id}{callback.message.message_id}'
+    shop_id = payok_shop_id
+    currency = 'RUB'
+    desc = 'WorkMarketBot'
+    secret = payok_sk
+
+
+    sign = hashlib.md5(f"{amount}|{label}|{shop_id}|{currency}|{desc}|{secret}".encode(
+        'utf-8')).hexdigest()
+    pay_url = f"https://payok.io/pay?amount={amount}&currency={currency}&payment={label}&desc={desc}&shop={shop_id}&method=cd&sign={sign}"
+
+    def payok_kb() -> InlineKeyboardMarkup:
+        kb = InlineKeyboardBuilder()
+        kb.add(InlineKeyboardButton(
+            text="Ссылка на оплату", url=pay_url
+        ))
+        kb.button(
+            text="Проверить оплату", callback_data='payok_check'
+        )
+        kb.add(InlineKeyboardButton(
+            text="Связаться с менеджером", callback_data='help'
+        ))
+        kb.adjust(1)
+        return kb.as_markup()
+
+    await callback.message.edit_text(f"Сумма на оплату: {data['full_sum']} руб.\n\n"
+                                     f"<b>Как произведете оплату, ОБЯЗАТЕЛЬНО нажмите на кнопку 'Проверить оплату'!</b>\n\n"
+                                     f"Если возникнет проблема при оплате, свяжитесь с нашим менеджером")
+    await callback.message.edit_reply_markup(reply_markup=payok_kb())
+
+
+@router.callback_query(F.data == 'payok_check')
+async def check_payok(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+
+    async with aiohttp.ClientSession() as session:
+        request_params = {'API_ID': payok_api_id, 'API_KEY': payok_token, 'shop': payok_shop_id,
+                          'payment': int(f'{callback.from_user.id}{callback.message.message_id}')}
+        async with session.post('https://payok.io/api/transaction', data=request_params) as response:
+            operation = await response.json(content_type=None)
+            print(operation)
+            operation_keys = list(operation.keys())
+
+    try:
+        if operation[f'{operation_keys[1]}']['transaction_status'] == 1:
+            data = await state.get_data()
+            date_time = f"{data['date_cal']} {data['time']}"
+
+            d = {
+                'user_id': callback.from_user.id,
+                'date_time': datetime.strptime(date_time, "%d.%m.%Y %H:%M"),
+                'text': data['text'],
+                'cities': data['cities']
+            }
+
+            if 'photo' in data:
+                d['photo'] = data['photo']
+            elif data['pin']:
+                d['pin'] = datetime.strptime(data['pin'], '%H:%M %Y-%m-%d')
+
+            await SchMsgsQs.add_sch_msg_user(**d)
+
+            await state.clear()
+            await callback.message.edit_text("Оплата проведена успешно!\n"
+                                             "Посмотреть свои запланированные посты можно с помощью команды /posts")
+    except (IndexError, TypeError):
+        pass
