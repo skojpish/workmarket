@@ -20,7 +20,7 @@ class SchMsgsQs:
                 session.add(stmt)
                 await session.commit()
 
-                cities_list = cities.split()
+                cities_list = cities.split(',')
 
                 channels = await ChannelsQs.get_channels_id_ref_user(cities_list)
                 await ChannelsAndMsgsQs.add_ref(stmt.id, channels)
@@ -66,7 +66,7 @@ class SchMsgsQs:
                 exist = res.all()
 
                 if exist:
-                    cities_list = cities.split()
+                    cities_list = cities.split(',')
 
                     query = select(ChannelsAndMsgs).where(
                         ChannelsAndMsgs.msg_id == exist[0][0]).options(selectinload(ChannelsAndMsgs.channel))

@@ -41,7 +41,7 @@ class ChannelsQs:
                 query = select(Channels.city).where(Channels.country == country).order_by(
                     Channels.city)
                 res = await session.execute(query)
-                cities = res.all()
+                cities = res.scalars().all()
         except Exception as e:
             print(e)
         else:

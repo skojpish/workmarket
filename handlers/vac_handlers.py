@@ -34,7 +34,7 @@ async def city_add(msg: Message, state: FSMContext):
 
     if 'cities' in data_check:
         cities_all = await ChannelsQs.get_cities(data_check['cat'])
-        user_cities = data_check['cities'].split()
+        user_cities = data_check['cities'].split(',')
         cities_list = [city[0] for city in cities_all if city[0] not in user_cities]
     else:
         cities = await ChannelsQs.get_cities(data_check['cat'])
@@ -44,7 +44,7 @@ async def city_add(msg: Message, state: FSMContext):
         await del_messages_lo(msg.from_user.id)
 
         if 'cities' in data_check:
-            await state.update_data(cities=f"{data_check['cities']} {msg.text}")
+            await state.update_data(cities=f"{data_check['cities']},{msg.text}")
         else:
             await state.update_data(cities=f'{msg.text}')
 
@@ -70,7 +70,7 @@ async def city_add(msg: Message, state: FSMContext):
 
         data = await state.get_data()
 
-        list_cities = data['cities'].split()
+        list_cities = data['cities'].split(',')
 
         cities = await ChannelsQs.get_user_cities(list_cities, data['cat'])
 
@@ -96,7 +96,7 @@ async def all_cities(callback: CallbackQuery, state: FSMContext):
     data_all = await state.get_data()
 
     cities = await ChannelsQs.get_cities(data_all['cat'])
-    cities_all = ' '.join(city[0] for city in cities)
+    cities_all = ','.join(city[0] for city in cities)
 
     await state.update_data(cities=cities_all)
 

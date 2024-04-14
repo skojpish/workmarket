@@ -1,6 +1,7 @@
 import asyncio
 from datetime import datetime
 
+from aiogram.exceptions import TelegramBadRequest
 from apscheduler.jobstores.redis import RedisJobStore
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler_di import ContextSchedulerDecorator
@@ -46,25 +47,29 @@ async def send_sch_msg(sch_msg_id: int):
 
         try:
             if photo:
-                message = await bot.send_photo(channel_id, photo, caption=text)
+                try:
+                    message = await bot.send_photo(channel_id, photo, caption=text)
+                except TelegramBadRequest:
+                    await bot.send_photo(channel_id, photo)
+                    message = await bot.send_message(channel_id, text)
             else:
                 message = await bot.send_message(channel_id, text)
 
             if pin:
                 await bot.pin_chat_message(channel_id, message.message_id, disable_notification=True)
                 await add_unpin_msg_job(sch_msg_id, message.message_id, pin)
-            else:
-                await ChannelsAndMsgsQs.del_sch_msgs(sch_msg_id)
-        except Exception:
-            pass
+        except Exception as e:
+            print(e)
 
         counter += 1
+
+    await ChannelsAndMsgsQs.del_sch_msgs(sch_msg_id)
 
 
 async def add_unpin_msg_job(sch_msg_id: int, unpin_msg_id: int, date_time: datetime):
     scheduler.add_job(unpin_msg, "date", run_date=date_time, kwargs={'sch_msg_id': sch_msg_id,
                                                                      'msg_id': unpin_msg_id},
-                      timezone='Europe/Moscow')
+                                                                    timezone='Europe/Moscow')
 
 
 async def unpin_msg(sch_msg_id: int, msg_id: int):
@@ -75,7 +80,7 @@ async def unpin_msg(sch_msg_id: int, msg_id: int):
     for channel_id in channels:
         try:
             await bot.unpin_chat_message(channel_id, msg_id)
-        except Exception:
-            pass
+        except Exception as e:
+            print(e)
 
     await ChannelsAndMsgsQs.del_sch_msgs(sch_msg_id)

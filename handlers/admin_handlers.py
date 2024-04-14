@@ -298,17 +298,17 @@ async def admin_city_add(msg: Message, state: FSMContext):
 
     if 'cities' in data_check:
         cities_all = await ChannelsQs.get_cities_admin(data_check['country'])
-        user_cities = data_check['cities'].split()
-        cities_list = [city[0] for city in cities_all if city[0] not in user_cities]
+        user_cities = data_check['cities'].split(',')
+        cities_list = [city for city in cities_all if city not in user_cities]
     else:
         cities = await ChannelsQs.get_cities_admin(data_check['country'])
-        cities_list = [city[0] for city in cities]
+        cities_list = [city for city in cities]
 
     if msg.text in cities_list:
         await del_messages_lo(msg.from_user.id)
 
         if 'cities' in data_check:
-            await state.update_data(cities=f"{data_check['cities']} {msg.text}")
+            await state.update_data(cities=f"{data_check['cities']},{msg.text}")
         else:
             await state.update_data(cities=f'{msg.text}')
 
@@ -334,7 +334,7 @@ async def admin_city_add(msg: Message, state: FSMContext):
 
         data = await state.get_data()
 
-        cities = data['cities'].split()
+        cities = data['cities'].split(',')
 
         await msg.answer(f"Вы выбрали следующие города:\n"
                          f"{new_line.join(f'{city}' for city in cities)}",
@@ -358,7 +358,7 @@ async def admin_cities(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
 
     cities = await ChannelsQs.get_cities_admin(data['country'])
-    cities_all = ' '.join(city[0] for city in cities)
+    cities_all = ','.join(city for city in cities)
 
     await state.update_data(cities=cities_all)
 

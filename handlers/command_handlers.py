@@ -60,7 +60,7 @@ async def cmd_posts(msg: Message, state: FSMContext) -> None:
             return (f"<b>{index}.</b>\nКраткий текст: {text[0:15]}...\n"
                     f"Дата: {date}\n"
                     f"Время: {time}\n"
-                    f"Каналы: {' '.join(chnnls)}")
+                    f"Каналы: {', '.join(chnnls)}")
 
         message = await msg.answer(f"""<b>Список запланированных публикаций</b>\n\n{double_new_line.join(
             post_layout(i+1, sch_msgs[i][1], sch_msgs[i][2].strftime('%d.%m.%Y'), sch_msgs[i][2].strftime('%H:%M'), 

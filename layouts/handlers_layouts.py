@@ -114,7 +114,7 @@ async def order_message_lo(callback, state, data):
                 message = await callback.message.answer_photo(data['photo'], f"Вы ввели следующие данные:\n"
                                                                    f"Сообщение: {data['text']}\n"
                                                                    f"Дата: {data['date_cal']}\n"
-                                                                   f"Время: {data['time']}\n"
+                                                                   f"Время: {data['time']}\n\n"
                                                                    f"Города: {data['cities']}",
                                                     reply_markup=end_scheduled_kb(data))
             except TelegramBadRequest:
@@ -122,14 +122,14 @@ async def order_message_lo(callback, state, data):
                 message = await callback.message.answer(f"Вы ввели следующие данные:\n"
                                                                    f"Сообщение: {data['text']}\n"
                                                                    f"Дата: {data['date_cal']}\n"
-                                                                   f"Время: {data['time']}\n"
+                                                                   f"Время: {data['time']}\n\n"
                                                                    f"Города: {data['cities']}",
                                                     reply_markup=end_scheduled_kb(data))
         else:
             message = await callback.message.answer(f"Вы ввели следующие данные:\n"
                                                     f"Сообщение: {data['text']}\n"
                                                     f"Дата: {data['date_cal']}\n"
-                                                    f"Время: {data['time']}"
+                                                    f"Время: {data['time']}\n\n"
                                                     f"Города: {data['cities']}",
                                           reply_markup=end_scheduled_kb(data))
     else:

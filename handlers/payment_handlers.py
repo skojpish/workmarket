@@ -134,7 +134,7 @@ async def payment_payok(callback: CallbackQuery, state: FSMContext):
     amount = data['full_sum']
     label = f'{callback.from_user.id}{callback.message.message_id}'
     shop_id = payok_shop_id
-    currency = 'BYN'
+    currency = 'RUB'
     desc = 'WorkMarketBot'
     secret = payok_sk
 
