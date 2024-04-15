@@ -64,3 +64,15 @@ def edit_posts_kb() -> InlineKeyboardMarkup:
     )
     kb.adjust(1)
     return kb.as_markup()
+
+
+def channel_msg_links_kb() -> InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    kb.add(InlineKeyboardButton(
+        text="🌏СЕТЬ КАНАЛОВ↗️", url='https://t.me/workmarket_goroda'
+    ))
+    kb.add(InlineKeyboardButton(
+        text="📩РАЗМЕСТИТЬ ПУБЛИКАЦИЮ↗️", url='https://t.me/WorkMarketsBot'
+    ))
+    kb.adjust(1)
+    return kb.as_markup()

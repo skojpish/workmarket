@@ -8,6 +8,7 @@ from apscheduler_di import ContextSchedulerDecorator
 
 from config import bot, redis_host, redis_pass
 from database.channelsandmsgs import ChannelsAndMsgsQs
+from keyboards.user_kbs import channel_msg_links_kb
 
 jobstores = {
     'default': RedisJobStore(jobs_key='dispatched_trips_jobs',
@@ -48,12 +49,12 @@ async def send_sch_msg(sch_msg_id: int):
         try:
             if photo:
                 try:
-                    message = await bot.send_photo(channel_id, photo, caption=text)
+                    message = await bot.send_photo(channel_id, photo, caption=text, reply_markup=channel_msg_links_kb())
                 except TelegramBadRequest:
                     await bot.send_photo(channel_id, photo)
-                    message = await bot.send_message(channel_id, text)
+                    message = await bot.send_message(channel_id, text, reply_markup=channel_msg_links_kb())
             else:
-                message = await bot.send_message(channel_id, text)
+                message = await bot.send_message(channel_id, text, reply_markup=channel_msg_links_kb())
 
             if pin:
                 await bot.pin_chat_message(channel_id, message.message_id, disable_notification=True)

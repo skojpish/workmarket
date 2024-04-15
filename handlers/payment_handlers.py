@@ -35,7 +35,7 @@ async def payment_methods(callback: CallbackQuery, state: FSMContext):
 
     data = await state.get_data()
 
-    channels = await ChannelsQs.get_user_cities(data['cities'].split(), data['cat'])
+    channels = await ChannelsQs.get_user_cities(data['cities'].split(','), data['cat'])
     price = []
 
     for channel in channels:
@@ -76,6 +76,9 @@ async def payment_youmoney(callback: CallbackQuery, state: FSMContext):
         kb.button(
             text="Проверить оплату", callback_data='youmoney_check'
         )
+        kb.add(InlineKeyboardButton(
+            text="Назад", callback_data='payment_methods'
+        ))
         kb.add(InlineKeyboardButton(
             text="Связаться с менеджером", callback_data='help'
         ))
@@ -122,7 +125,8 @@ async def check_youmoney(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data == 'help')
 async def help_bot(callback: CallbackQuery):
-    message = await callback.message.answer(f"Аккаунт менеджера: @alexander_ivanovsky")
+    await callback.answer()
+    message = await callback.message.answer(f"Аккаунт менеджера: @workmarket_manager")
 
     await DelMsgsQs.add_msg_id(callback.from_user.id, message.message_id)
 
@@ -150,6 +154,9 @@ async def payment_payok(callback: CallbackQuery, state: FSMContext):
         kb.button(
             text="Проверить оплату", callback_data='payok_check'
         )
+        kb.add(InlineKeyboardButton(
+            text="Назад", callback_data='payment_methods'
+        ))
         kb.add(InlineKeyboardButton(
             text="Связаться с менеджером", callback_data='help'
         ))
