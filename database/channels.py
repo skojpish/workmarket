@@ -18,7 +18,24 @@ class ChannelsQs:
             return countries
 
     @staticmethod
-    async def get_cities(cat: str):
+    async def get_cities(cat: str, starting_point: int):
+        try:
+            async with async_session_factory() as session:
+                if cat == 'vac':
+                    query = select(Channels.city, Channels.price_vac).where(Channels.country == 'Россия').order_by(
+                        Channels.city).limit(101).offset(starting_point)
+                elif cat == 'ad':
+                    query = select(Channels.city, Channels.price_ad).where(Channels.country == 'Россия').order_by(
+                        Channels.city).limit(101).offset(starting_point)
+                res = await session.execute(query)
+                cities = res.all()
+        except Exception as e:
+            print(e)
+        else:
+            return cities
+
+    @staticmethod
+    async def get_all_cities(cat: str):
         try:
             async with async_session_factory() as session:
                 if cat == 'vac':
@@ -35,7 +52,20 @@ class ChannelsQs:
             return cities
 
     @staticmethod
-    async def get_cities_admin(country: str):
+    async def get_cities_admin(country: str, starting_point: int):
+        try:
+            async with async_session_factory() as session:
+                query = select(Channels.city).where(Channels.country == country).order_by(
+                    Channels.city).limit(101).offset(starting_point)
+                res = await session.execute(query)
+                cities = res.scalars().all()
+        except Exception as e:
+            print(e)
+        else:
+            return cities
+
+    @staticmethod
+    async def get_all_cities_admin(country: str):
         try:
             async with async_session_factory() as session:
                 query = select(Channels.city).where(Channels.country == country).order_by(
@@ -46,6 +76,7 @@ class ChannelsQs:
             print(e)
         else:
             return cities
+
 
     @staticmethod
     async def get_user_cities(cities: list, cat: str):

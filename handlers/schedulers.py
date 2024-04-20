@@ -8,6 +8,8 @@ from apscheduler_di import ContextSchedulerDecorator
 
 from config import bot, redis_host, redis_pass
 from database.channelsandmsgs import ChannelsAndMsgsQs
+from database.package_pins import PackagePinsQs
+from database.package_posts import PackagePostsQs
 from keyboards.user_kbs import channel_msg_links_kb
 
 jobstores = {
@@ -85,3 +87,28 @@ async def unpin_msg(sch_msg_id: int, msg_id: int):
             print(e)
 
     await ChannelsAndMsgsQs.del_sch_msgs(sch_msg_id)
+
+
+async def add_package_posts_job(package_id: int, date_time: datetime):
+    scheduler.add_job(del_package_posts, "date", run_date=date_time, kwargs={'package_id': package_id},
+                      timezone='Europe/Moscow')
+
+
+async def del_package_posts(package_id: int):
+    try:
+        await PackagePostsQs.delete_user(package_id)
+    except Exception:
+        pass
+
+
+async def add_package_pins_job(package_id: int, date_time: datetime):
+    scheduler.add_job(del_package_pins, "date", run_date=date_time, kwargs={'package_id': package_id},
+                      timezone='Europe/Moscow')
+
+
+async def del_package_pins(package_id: int):
+    try:
+        await PackagePinsQs.delete_user(package_id)
+    except Exception:
+        pass
+

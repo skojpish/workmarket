@@ -76,3 +76,24 @@ def channel_msg_links_kb() -> InlineKeyboardMarkup:
     ))
     kb.adjust(1)
     return kb.as_markup()
+
+
+def package_confirm_kb() -> InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    kb.button(
+        text="Подтвердить и оплатить", callback_data="payment_methods"
+    )
+    kb.button(
+        text="Назад", callback_data="buy_package"
+    )
+    kb.adjust(1)
+    return kb.as_markup()
+
+
+def pin_package_confirm_kb() -> InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    kb.button(
+        text="Подтвердить и оплатить", callback_data="payment_methods"
+    )
+    kb.adjust(1)
+    return kb.as_markup()

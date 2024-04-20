@@ -59,3 +59,23 @@ class ChannelsInfo(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     ch_id: Mapped[int] = mapped_column(BigInteger)
     ch_name: Mapped[str]
+
+
+class PackagePosts(Base):
+    __tablename__ = "package_posts"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(BigInteger)
+    publ_count: Mapped[int]
+    category: Mapped[str]
+    del_datetime: Mapped[datetime]
+
+
+class PackagePins(Base):
+    __tablename__ = "package_pins"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(BigInteger)
+    pin_count: Mapped[int]
+    category: Mapped[str]
+    del_datetime: Mapped[datetime]

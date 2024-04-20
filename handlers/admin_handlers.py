@@ -285,7 +285,7 @@ async def add_country_admin(callback: CallbackQuery, callback_data: MsgAllChanne
     await state.update_data(role='admin', country=callback_data.country)
     await state.set_state(AdminCities.city)
 
-    await choice_admin_city(callback, state, callback_data.country)
+    await choice_admin_city(callback, 0, state, callback_data.country)
 
     await DelMsgsQs.add_msg_id(callback.from_user.id, callback.message.message_id)
 
@@ -297,11 +297,11 @@ async def admin_city_add(msg: Message, state: FSMContext):
     data_check = await state.get_data()
 
     if 'cities' in data_check:
-        cities_all = await ChannelsQs.get_cities_admin(data_check['country'])
+        cities_all = await ChannelsQs.get_all_cities_admin(data_check['country'])
         user_cities = data_check['cities'].split(',')
         cities_list = [city for city in cities_all if city not in user_cities]
     else:
-        cities = await ChannelsQs.get_cities_admin(data_check['country'])
+        cities = await ChannelsQs.get_all_cities_admin(data_check['country'])
         cities_list = [city for city in cities]
 
     if msg.text in cities_list:
@@ -317,14 +317,18 @@ async def admin_city_add(msg: Message, state: FSMContext):
             kb.button(
                 text=f"Продолжить", callback_data=AdminCityStatusCF(
                     add=False,
-                    next=True
+                    next=True,
+                    starting_point=0,
+                    back=False
                 )
             )
             if len(cities_list) > 1:
                 kb.button(
                     text=f"Добавить еще город", callback_data=AdminCityStatusCF(
                         add=True,
-                        next=False
+                        next=False,
+                        starting_point=0,
+                        back=False
                     )
                 )
             kb.adjust(1)
@@ -346,18 +350,19 @@ async def admin_city_add(msg: Message, state: FSMContext):
 
 
 @router.callback_query(AdminCityStatusCF.filter(F.add))
-async def admin_city_add(callback: CallbackQuery, state: FSMContext):
+async def admin_city_add(callback: CallbackQuery, callback_data: AdminCityStatusCF, state: FSMContext):
     data = await state.get_data()
-    await del_messages_lo(callback.from_user.id)
+    await choice_admin_city(callback, callback_data.starting_point, state, data['country'])
+    if (callback_data.starting_point == 0) and not callback_data.back:
+        await del_messages_lo(callback.from_user.id)
     await DelMsgsQs.add_msg_id(callback.from_user.id, callback.message.message_id)
-    await choice_admin_city(callback, state, data['country'])
 
 
 @router.callback_query(AdminCityCF.filter(F.all))
 async def admin_cities(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
 
-    cities = await ChannelsQs.get_cities_admin(data['country'])
+    cities = await ChannelsQs.get_all_cities_admin(data['country'])
     cities_all = ','.join(city for city in cities)
 
     await state.update_data(cities=cities_all)
@@ -369,7 +374,8 @@ async def admin_cities(callback: CallbackQuery, state: FSMContext):
         kb.button(
             text=f"Продолжить", callback_data=AdminCityStatusCF(
                 add=False,
-                next=True
+                next=True,
+                back=False
             )
         )
         kb.adjust(1)

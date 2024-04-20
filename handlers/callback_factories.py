@@ -21,6 +21,8 @@ class UserCityCF(CallbackData, prefix='uci'):
 class UserCityStatusCF(CallbackData, prefix='ca'):
     add: bool = False
     next: bool = False
+    starting_point: int = 0
+    back: bool = False
 
 
 class AdminCityCF(CallbackData, prefix='aci'):
@@ -30,6 +32,8 @@ class AdminCityCF(CallbackData, prefix='aci'):
 class AdminCityStatusCF(CallbackData, prefix='acs'):
     add: bool = False
     next: bool = False
+    starting_point: int = 0
+    back: bool = False
 
 
 class PinCF(CallbackData, prefix='p'):
@@ -61,3 +65,16 @@ class EditPostCF(CallbackData, prefix='ep'):
     msg_id: int
     text: bool = False
     photo: bool = False
+
+
+class PackagesCF(CallbackData, prefix='p'):
+    package_num: int
+    package_sum: int
+    publ_count: int
+
+
+class PinPackagesCF(CallbackData, prefix='pp'):
+    package_num: int
+    package_sum: int
+    pin_count: int
+

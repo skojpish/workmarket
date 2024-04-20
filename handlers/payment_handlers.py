@@ -11,8 +11,9 @@ from yoomoney import Client, Quickpay
 from config import youmoney_token, payok_shop_id, payok_sk, payok_api_id, payok_token
 from database.channels import ChannelsQs
 from database.delete_msgs import DelMsgsQs
+from database.package_posts import PackagePostsQs
 from database.scheduled_msgs import SchMsgsQs
-from layouts.handlers_layouts import del_messages_lo
+from layouts.handlers_layouts import del_messages_lo, confirm_payment_lo
 
 router = Router()
 client = Client(youmoney_token)
@@ -22,34 +23,63 @@ client = Client(youmoney_token)
 async def payment_methods(callback: CallbackQuery, state: FSMContext):
     await DelMsgsQs.add_msg_id(callback.from_user.id, callback.message.message_id)
 
-    def payment_methods_kb() -> InlineKeyboardMarkup:
-        kb = InlineKeyboardBuilder()
-        kb.add(InlineKeyboardButton(
-            text="Юmoney", callback_data='youmoney'
-        ))
-        kb.add(InlineKeyboardButton(
-            text="Payok", callback_data='payok'
-        ))
-        kb.adjust(1)
-        return kb.as_markup()
-
     data = await state.get_data()
 
-    channels = await ChannelsQs.get_user_cities(data['cities'].split(','), data['cat'])
-    price = []
+    if 'package_posts' in data:
+        date_time = f"{data['date_cal']} {data['time']}"
 
-    for channel in channels:
-        price.append(channel[1])
+        d = {
+            'user_id': callback.from_user.id,
+            'date_time': datetime.strptime(date_time, "%d.%m.%Y %H:%M"),
+            'text': data['text'],
+            'cities': data['cities']
+        }
 
-    full_sum = sum(price)
+        if 'photo' in data:
+            d['photo'] = data['photo']
+        elif data['pin']:
+            d['pin'] = datetime.strptime(data['pin'], '%H:%M %Y-%m-%d')
 
-    if 'pin_sum' in data:
-        full_sum += data['pin_sum']
+        await PackagePostsQs.subtract_one_publ(callback.from_user.id)
+        await PackagePostsQs.delete_package()
 
-    await state.update_data(full_sum=full_sum)
+        await SchMsgsQs.add_sch_msg_user(**d)
+        message = await callback.message.answer(f"Пакетное размещение успешно использовано!\n"
+                                                "Посмотреть свои запланированные посты можно с помощью команды /posts")
+    else:
+        def payment_methods_kb() -> InlineKeyboardMarkup:
+            kb = InlineKeyboardBuilder()
+            kb.add(InlineKeyboardButton(
+                text="Юmoney", callback_data='youmoney'
+            ))
+            kb.add(InlineKeyboardButton(
+                text="Payok", callback_data='payok'
+            ))
+            kb.adjust(1)
+            return kb.as_markup()
 
-    message = await callback.message.answer(f"Сумма на оплату: {full_sum} руб.\n\n"
-                                  f"Выберите способ оплаты", reply_markup=payment_methods_kb())
+        if 'package_sum' in data:
+            full_sum = data['package_sum']
+        elif 'pin_package_sum' in data:
+            full_sum = data['pin_package_sum']
+        elif 'all_cities' in data:
+            full_sum = int('{:g}'.format(data['all_cities_sum']*0.7))
+        else:
+            channels = await ChannelsQs.get_user_cities(data['cities'].split(','), data['cat'])
+            price = []
+
+            for channel in channels:
+                price.append(channel[1])
+
+            full_sum = sum(price)
+
+            if 'pin_sum' in data:
+                full_sum += data['pin_sum']
+
+        await state.update_data(full_sum=full_sum)
+
+        message = await callback.message.answer(f"Сумма на оплату: {full_sum} руб.\n\n"
+                                      f"Выберите способ оплаты", reply_markup=payment_methods_kb())
 
     await del_messages_lo(callback.from_user.id)
     await DelMsgsQs.add_msg_id(callback.from_user.id, message.message_id)
@@ -99,26 +129,7 @@ async def check_youmoney(callback: CallbackQuery, state: FSMContext):
     operations = history.operations
     try:
         if operations[0].status == 'success':
-            data = await state.get_data()
-            date_time = f"{data['date_cal']} {data['time']}"
-
-            d = {
-                'user_id': callback.from_user.id,
-                'date_time': datetime.strptime(date_time, "%d.%m.%Y %H:%M"),
-                'text': data['text'],
-                'cities': data['cities']
-            }
-
-            if 'photo' in data:
-                d['photo'] = data['photo']
-            elif data['pin']:
-                d['pin'] = datetime.strptime(data['pin'], '%H:%M %Y-%m-%d')
-
-            await SchMsgsQs.add_sch_msg_user(**d)
-
-            await state.clear()
-            await callback.message.edit_text("Оплата проведена успешно!\n"
-                                             "Посмотреть свои запланированные посты можно с помощью команды /posts")
+            await confirm_payment_lo(callback, state)
     except IndexError:
         pass
 
@@ -182,25 +193,6 @@ async def check_payok(callback: CallbackQuery, state: FSMContext):
 
     try:
         if operation[f'{operation_keys[1]}']['transaction_status']:
-            data = await state.get_data()
-            date_time = f"{data['date_cal']} {data['time']}"
-
-            d = {
-                'user_id': callback.from_user.id,
-                'date_time': datetime.strptime(date_time, "%d.%m.%Y %H:%M"),
-                'text': data['text'],
-                'cities': data['cities']
-            }
-
-            if 'photo' in data:
-                d['photo'] = data['photo']
-            elif data['pin']:
-                d['pin'] = datetime.strptime(data['pin'], '%H:%M %Y-%m-%d')
-
-            await SchMsgsQs.add_sch_msg_user(**d)
-
-            await state.clear()
-            await callback.message.edit_text("Оплата проведена успешно!\n"
-                                             "Посмотреть свои запланированные посты можно с помощью команды /posts")
+            await confirm_payment_lo(callback, state)
     except (IndexError, TypeError):
         pass
