@@ -111,6 +111,19 @@ class ChannelsQs:
             return channels
 
     @staticmethod
+    async def get_all_channels():
+        try:
+            async with async_session_factory() as session:
+                query = select(Channels.channel_name).where(Channels.country == 'Россия').order_by(
+                    Channels.channel_name)
+                res = await session.execute(query)
+                channels = res.scalars().all()
+        except Exception as e:
+            print(e)
+        else:
+            return channels
+
+    @staticmethod
     async def get_channels_id_ref_admin(country):
         try:
             async with async_session_factory() as session:

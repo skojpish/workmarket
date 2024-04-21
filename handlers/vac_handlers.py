@@ -217,7 +217,7 @@ async def all_cities(callback: CallbackQuery, state: FSMContext):
     cities = await ChannelsQs.get_all_cities(data_all['cat'])
     cities_all = ','.join(city[0] for city in cities)
 
-    await state.update_data(cities=cities_all, all_cities=True)
+    await state.update_data(cities=cities_all, all_cities='Все российские города в сети WorkMarket')
 
     await DelMsgsQs.add_msg_id(callback.from_user.id, callback.message.message_id)
 
@@ -234,10 +234,10 @@ async def all_cities(callback: CallbackQuery, state: FSMContext):
         kb.adjust(1)
         return kb.as_markup()
 
-    new_line = '\n'
+    data = await state.get_data()
 
     await callback.message.edit_text(f"Вы выбрали следующие города:\n"
-                     f"{new_line.join(f'{city[0]} ({city[1]} руб.)' for city in cities)}")
+                     f"{data['all_cities']}")
     await callback.message.edit_reply_markup(reply_markup=city_all_kb())
 
 

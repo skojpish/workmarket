@@ -196,7 +196,7 @@ async def order_message_lo(callback, state, data):
                                                                    f"Сообщение: {data['text']}\n"
                                                                    f"Дата: {data['date_cal']}\n"
                                                                    f"Время: {data['time']}\n\n"
-                                                                   f"Города: {data['cities']}",
+                                                                   f"Города: {data['cities'] if 'all_cities' not in data else data['all_cities']}",
                                                     reply_markup=end_scheduled_kb(data))
             except TelegramBadRequest:
                 message_photo = await callback.message.answer_photo(data['photo'])
@@ -204,14 +204,14 @@ async def order_message_lo(callback, state, data):
                                                                    f"Сообщение: {data['text']}\n"
                                                                    f"Дата: {data['date_cal']}\n"
                                                                    f"Время: {data['time']}\n\n"
-                                                                   f"Города: {data['cities']}",
+                                                                   f"Города: {data['cities'] if 'all_cities' not in data else data['all_cities']}",
                                                     reply_markup=end_scheduled_kb(data))
         else:
             message = await callback.message.answer(f"Вы ввели следующие данные:\n"
                                                     f"Сообщение: {data['text']}\n"
                                                     f"Дата: {data['date_cal']}\n"
                                                     f"Время: {data['time']}\n\n"
-                                                    f"Города: {data['cities']}",
+                                                    f"Города: {data['cities'] if 'all_cities' not in data else data['all_cities']}",
                                           reply_markup=end_scheduled_kb(data))
     else:
         if data['pin']:
@@ -238,7 +238,7 @@ async def order_message_lo(callback, state, data):
                                                                    f"Дата: {data['date_cal']}\n"
                                                                    f"Время: {data['time']}\n"
                                                                    f"Закрепление: {pin}\n\n"
-                                                                   f"Города: {data['cities']}",
+                                                                   f"Города: {data['cities'] if 'all_cities' not in data else data['all_cities']}",
                                                     reply_markup=end_scheduled_user_kb(data))
             except TelegramBadRequest:
                 message_photo = await callback.message.answer_photo(data['photo'])
@@ -247,7 +247,7 @@ async def order_message_lo(callback, state, data):
                                                                              f"Дата: {data['date_cal']}\n"
                                                                              f"Время: {data['time']}\n"
                                                                              f"Закрепление: {pin}\n\n"
-                                                                             f"Города: {data['cities']}",
+                                                                             f"Города: {data['cities'] if 'all_cities' not in data else data['all_cities']}",
                                                               reply_markup=end_scheduled_user_kb(data))
         else:
             message = await callback.message.answer(f"Вы ввели следующие данные:\n\n"
@@ -255,7 +255,7 @@ async def order_message_lo(callback, state, data):
                                           f"Дата: {data['date_cal']}\n"
                                           f"Время: {data['time']}\n"
                                           f"Закрепление: {pin}\n\n"
-                                          f"Города: {data['cities']}",
+                                          f"Города: {data['cities'] if 'all_cities' not in data else data['all_cities']}",
                                           reply_markup=end_scheduled_user_kb(data))
     await del_messages_lo(callback.from_user.id)
 

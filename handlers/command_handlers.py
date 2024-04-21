@@ -3,6 +3,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, BotCommand
 
 from config import bot, masters
+from database.channels import ChannelsQs
 from database.channelsandmsgs import ChannelsAndMsgsQs
 from database.delete_msgs import DelMsgsQs
 from database.scheduled_msgs import SchMsgsQs
@@ -54,13 +55,14 @@ async def cmd_posts(msg: Message, state: FSMContext) -> None:
 
         await state.update_data(msg_ids=msg_ids)
 
+        all_chnnls = await ChannelsQs.get_all_channels()
         double_new_line = "\n\n"
 
         def post_layout(index, text, date, time, chnnls):
             return (f"<b>{index}.</b>\nКраткий текст: {text[0:15]}...\n"
                     f"Дата: {date}\n"
                     f"Время: {time}\n"
-                    f"Каналы: {', '.join(chnnls)}")
+                    f"Каналы: {', '.join(chnnls) if sorted(chnnls) != sorted(all_chnnls) else 'Во всех российских каналах сети WorkMarket'}")
 
         message = await msg.answer(f"""<b>Список запланированных публикаций</b>\n\n{double_new_line.join(
             post_layout(i+1, sch_msgs[i][1], sch_msgs[i][2].strftime('%d.%m.%Y'), sch_msgs[i][2].strftime('%H:%M'), 
