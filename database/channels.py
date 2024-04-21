@@ -1,4 +1,4 @@
-from sqlalchemy import select, update, delete, distinct
+from sqlalchemy import select, update, delete, distinct, and_
 
 from database.db_conn import async_session_factory
 from database.models import Channels, ChannelsInfo
@@ -18,11 +18,13 @@ class ChannelsQs:
             return countries
 
     @staticmethod
-    async def get_cities(cat: str, starting_point: int):
+    async def get_cities(cat: str, starting_point: int, user_cities: list):
         try:
             async with async_session_factory() as session:
                 if cat == 'vac':
-                    query = select(Channels.city, Channels.price_vac).where(Channels.country == 'Россия').order_by(
+                    query = select(Channels.city, Channels.price_vac).where(and_(Channels.country == 'Россия',
+                                                                                Channels.city.notin_(user_cities))
+                        ).order_by(
                         Channels.city).limit(101).offset(starting_point)
                 elif cat == 'ad':
                     query = select(Channels.city, Channels.price_ad).where(Channels.country == 'Россия').order_by(
@@ -52,10 +54,11 @@ class ChannelsQs:
             return cities
 
     @staticmethod
-    async def get_cities_admin(country: str, starting_point: int):
+    async def get_cities_admin(country: str, starting_point: int, admin_cities: list):
         try:
             async with async_session_factory() as session:
-                query = select(Channels.city).where(Channels.country == country).order_by(
+                query = select(Channels.city).where(and_(Channels.country == country,
+                                                         Channels.city.notin_(admin_cities))).order_by(
                     Channels.city).limit(101).offset(starting_point)
                 res = await session.execute(query)
                 cities = res.scalars().all()
@@ -76,7 +79,6 @@ class ChannelsQs:
             print(e)
         else:
             return cities
-
 
     @staticmethod
     async def get_user_cities(cities: list, cat: str):

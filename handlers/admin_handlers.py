@@ -304,13 +304,19 @@ async def admin_city_add(msg: Message, state: FSMContext):
         cities = await ChannelsQs.get_all_cities_admin(data_check['country'])
         cities_list = [city for city in cities]
 
-    if msg.text in cities_list:
-        await del_messages_lo(msg.from_user.id)
+    admin_msg_list = msg.text.split(', ')
 
-        if 'cities' in data_check:
-            await state.update_data(cities=f"{data_check['cities']},{msg.text}")
-        else:
-            await state.update_data(cities=f'{msg.text}')
+    if any(city in admin_msg_list for city in cities_list):
+        for entered_city in admin_msg_list:
+            if entered_city in cities_list:
+                data = await state.get_data()
+                if 'cities' in data:
+                    await state.update_data(cities=f"{data['cities']},{entered_city}")
+                else:
+                    await state.update_data(cities=f'{entered_city}')
+                cities_list.remove(entered_city)
+
+        await del_messages_lo(msg.from_user.id)
 
         def city_add_kb() -> InlineKeyboardMarkup:
             kb = InlineKeyboardBuilder()
@@ -322,7 +328,7 @@ async def admin_city_add(msg: Message, state: FSMContext):
                     back=False
                 )
             )
-            if len(cities_list) > 1:
+            if len(cities_list) > 0:
                 kb.button(
                     text=f"Добавить еще город", callback_data=AdminCityStatusCF(
                         add=True,

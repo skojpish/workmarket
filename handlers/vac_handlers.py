@@ -42,13 +42,19 @@ async def city_add(msg: Message, state: FSMContext):
         cities = await ChannelsQs.get_all_cities(data_check['cat'])
         cities_list = [city[0] for city in cities]
 
-    if msg.text in cities_list:
-        await del_messages_lo(msg.from_user.id)
+    user_msg_list = msg.text.split(', ')
 
-        if 'cities' in data_check:
-            await state.update_data(cities=f"{data_check['cities']},{msg.text}")
-        else:
-            await state.update_data(cities=f'{msg.text}')
+    if any(city in user_msg_list for city in cities_list):
+        for entered_city in user_msg_list:
+            if entered_city in cities_list:
+                data = await state.get_data()
+                if 'cities' in data:
+                    await state.update_data(cities=f"{data['cities']},{entered_city}")
+                else:
+                    await state.update_data(cities=f'{entered_city}')
+                cities_list.remove(entered_city)
+
+        await del_messages_lo(msg.from_user.id)
 
         def city_add_kb() -> InlineKeyboardMarkup:
             kb = InlineKeyboardBuilder()
@@ -60,7 +66,7 @@ async def city_add(msg: Message, state: FSMContext):
                     back=False
                 )
             )
-            if len(cities_list) > 1:
+            if len(cities_list) > 0:
                 kb.button(
                     text=f"Добавить еще город", callback_data=UserCityStatusCF(
                         add=True,
@@ -81,7 +87,7 @@ async def city_add(msg: Message, state: FSMContext):
         cities = await ChannelsQs.get_user_cities(list_cities, data['cat'])
 
         await msg.answer(f"Вы выбрали следующие города:\n"
-                                         f"{new_line.join(f'{city[0]} ({city[1]} руб.)' for city in cities)}",
+                              f"{new_line.join(f'{city[0]} ({city[1]} руб.)' for city in cities)}",
                          reply_markup=city_add_kb())
     else:
         message = await msg.answer(f"Данного города нет в списке, попробуйте ввести название еще раз!")

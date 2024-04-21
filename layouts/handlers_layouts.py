@@ -40,18 +40,17 @@ async def del_messages_lo(user_id):
 async def choice_city_lo(callback, state, starting_point):
     data = await state.get_data()
     if 'cities' in data:
-        cities_all = await ChannelsQs.get_cities(data['cat'], starting_point)
-        user_cities = data['cities'].split()
-        cities = [(city[0], city[1]) for city in cities_all if city[0] not in user_cities]
+        user_cities = data['cities'].split(',')
+        cities = await ChannelsQs.get_cities(data['cat'], starting_point, user_cities)
     else:
-        cities = await ChannelsQs.get_cities(data['cat'], starting_point)
+        cities = await ChannelsQs.get_cities(data['cat'], starting_point, [])
 
-    prices = []
-
-    for price in cities:
-        prices.append(price[1])
-
-    await state.update_data(all_cities_sum=sum(prices))
+    if 'all_cities_sum' not in data:
+        cities_all = await ChannelsQs.get_all_cities(data['cat'])
+        prices = []
+        for price in cities_all:
+            prices.append(price[1])
+        await state.update_data(all_cities_sum=sum(prices))
 
     data = await state.get_data()
 
@@ -94,8 +93,10 @@ async def choice_city_lo(callback, state, starting_point):
     await state.set_state(UserCities.city)
 
     if cities:
-        await callback.message.edit_text(f"Напишите название города из списка представленного ниже:\n\n"
-                                         f"{new_line.join(f'{cities.index(city) + 1 + starting_point}. {city[0]} ({city[1]} руб.)' for city in cities[0:100])}")
+        await callback.message.edit_text(f"{new_line.join(f'{cities.index(city) + 1 + starting_point}. {city[0]} ({city[1]} руб.)' for city in cities[0:100])}\n\n"
+                                         f"Напишите название города из списка представленного выше или укажите несколько городов, "
+                                         f"где вы хотели бы разместить публикацию, по следующему образцу:\n"
+                                         f"Город1, Город2, Город3")
         await callback.message.edit_reply_markup(reply_markup=city_kb())
     else:
         await callback.answer()
@@ -135,11 +136,10 @@ async def choice_admin_city(callback, starting_point, state, country):
     data = await state.get_data()
 
     if 'cities' in data:
-        cities_all = await ChannelsQs.get_cities_admin(country, starting_point)
-        user_cities = data['cities'].split()
-        cities = [city for city in cities_all if city not in user_cities]
+        admin_cities = data['cities'].split(',')
+        cities = await ChannelsQs.get_cities_admin(country, starting_point, admin_cities)
     else:
-        cities = await ChannelsQs.get_cities_admin(country, starting_point)
+        cities = await ChannelsQs.get_cities_admin(country, starting_point, [])
 
     def city_kb() -> InlineKeyboardMarkup:
         kb = InlineKeyboardBuilder()
@@ -175,8 +175,10 @@ async def choice_admin_city(callback, starting_point, state, country):
     await state.set_state(AdminCities.city)
 
     if cities:
-        await callback.message.edit_text(f"Напишите название города из списка представленного ниже:\n\n"
-                                         f"{new_line.join(f'{cities.index(city)+1+starting_point}. {city}' for city in cities[0:100])}")
+        await callback.message.edit_text(f"{new_line.join(f'{cities.index(city)+1+starting_point}. {city}' for city in cities[0:100])}\n\n"
+                                         f"Напишите название города из списка представленного выше или укажите несколько городов, "
+                                         f"где вы хотели бы разместить публикацию, по следующему образцу:\n"
+                                         f"Город1, Город2, Город3")
         await callback.message.edit_reply_markup(reply_markup=city_kb())
     else:
         await callback.answer()
