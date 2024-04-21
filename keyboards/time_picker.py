@@ -28,5 +28,7 @@ def time_picker_kb(hour, minute) -> InlineKeyboardMarkup:
                                                               down_min=False, confirm=True, value=0, hour_cur=hour,
                                                               minute_cur=minute)
               )
+    kb.button(text=f"Ввести время вручную", callback_data="time_manually"
+              )
     kb.adjust(2, 2, 2, 1)
     return kb.as_markup()

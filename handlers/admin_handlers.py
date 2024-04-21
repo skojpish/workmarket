@@ -188,10 +188,13 @@ async def list_of_channels(callback: CallbackQuery, callback_data: ListOfChannel
         def channels_management_kb() -> InlineKeyboardMarkup:
             kb = InlineKeyboardBuilder()
             kb.add(InlineKeyboardButton(
-                text="Изменить цены", callback_data="edit_channel_price"
+                text="Изменить цены", callback_data="edit_channel_info"
             ))
             kb.add(InlineKeyboardButton(
                 text="Удалить канал", callback_data="del_channel"
+            ))
+            kb.add(InlineKeyboardButton(
+                text="Обновить названия", callback_data="update_ch_names"
             ))
             if len(channels) > 10:
                 kb.button(
@@ -208,7 +211,7 @@ async def list_of_channels(callback: CallbackQuery, callback_data: ListOfChannel
 
         def channels_list_text(channel):
             if channel[1] == "Россия":
-                return (f'{channels.index(channel) + 1}.\n{channel[0]} - {channel[1]}\n'
+                return (f'{channels.index(channel) + 1 + callback_data.starting_point}.\n{channel[0]} - {channel[1]}\n'
                         f'Цена за размещение вакансии: {channel[2]}\n'
                         f'Цена за размещение рекламы: {channel[3]}')
             else:
@@ -219,6 +222,20 @@ async def list_of_channels(callback: CallbackQuery, callback_data: ListOfChannel
     else:
         await callback.message.delete_reply_markup()
         await callback.message.edit_text("Вы пока что не добавили ни одного канала")
+
+
+@router.callback_query(F.data == 'update_ch_names')
+async def update_channels_names(callback: CallbackQuery):
+    ch_names = await ChannelsQs.get_channels_names()
+
+    for ch in ch_names:
+        channel = await bot.get_chat(ch[0])
+        channel_name = channel.title
+        if channel_name != ch[1]:
+            await ChannelsQs.update_ch_name(ch[0], channel_name)
+
+    await callback.message.delete_reply_markup()
+    await callback.message.edit_text('Названия каналов успешно обновлены!')
 
 # Delete channel
 
@@ -517,33 +534,38 @@ async def time_confirm(callback: CallbackQuery, callback_data: TimePickerCF, sta
 
     await DelMsgsQs.add_msg_id(callback.from_user.id, callback.message.message_id)
 
-    await state.update_data(time=f'{callback_data.hour_cur:02}:{callback_data.minute_cur:02}')
     data = await state.get_data()
 
-    date_time = f"{data['date_cal']} {data['time']}"
-    f_date_time = datetime.strptime(date_time, "%d.%m.%Y %H:%M")
-
-    if data['role'] == 'user':
-        flag = await SchMsgsQs.check_time(f_date_time, data['cities'])
-    else:
-        flag = False
-
-    if flag:
-        await callback.message.edit_text(f"Вы выбрали {data['date_cal']}\n\n"
-                                         f"<b>К сожалению, время {data['time']} на дату {data['date_cal']} уже занято.</b>\n"
-                                         f"Выберите пожалуйста другое время (MSK)!")
-        await callback.message.edit_reply_markup(reply_markup=time_picker_kb(callback_data.hour_cur,
-                                                                             callback_data.minute_cur))
-    elif f_date_time < (datetime.now() + timedelta(minutes=10)):
-        try:
-            await callback.message.edit_text(f"Вы выбрали {data['date_cal']}\n\n"
-                                             f"<b>Выберите пожалуйста время, которое минимум на 10 минут больше нынешнего (MSK)!</b>")
-        except:
-            pass
-        await callback.message.edit_reply_markup(reply_markup=time_picker_kb(callback_data.hour_cur,
-                                                                             callback_data.minute_cur))
-    else:
+    if data['time_manually']:
         await order_message_lo(callback, state, data)
+    else:
+        await state.update_data(time=f'{callback_data.hour_cur:02}:{callback_data.minute_cur:02}')
+        data = await state.get_data()
+
+        date_time = f"{data['date_cal']} {data['time']}"
+        f_date_time = datetime.strptime(date_time, "%d.%m.%Y %H:%M")
+
+        if data['role'] == 'user':
+            flag = await SchMsgsQs.check_time(f_date_time, data['cities'])
+        else:
+            flag = False
+
+        if flag:
+            await callback.message.edit_text(f"Вы выбрали {data['date_cal']}\n\n"
+                                             f"<b>К сожалению, время {data['time']} на дату {data['date_cal']} уже занято.</b>\n"
+                                             f"Выберите пожалуйста другое время (MSK)!")
+            await callback.message.edit_reply_markup(reply_markup=time_picker_kb(callback_data.hour_cur,
+                                                                                 callback_data.minute_cur))
+        elif f_date_time < (datetime.now() + timedelta(minutes=10)):
+            try:
+                await callback.message.edit_text(f"Вы выбрали {data['date_cal']}\n\n"
+                                                 f"<b>Выберите пожалуйста время, которое минимум на 10 минут больше нынешнего (MSK)!</b>")
+            except:
+                pass
+            await callback.message.edit_reply_markup(reply_markup=time_picker_kb(callback_data.hour_cur,
+                                                                                 callback_data.minute_cur))
+        else:
+            await order_message_lo(callback, state, data)
 
 
 @router.callback_query(F.data == 'sch_confirm_all_msgs')

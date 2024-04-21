@@ -29,6 +29,7 @@ class UserText(StatesGroup):
     pin_month = State()
     text = State()
     photo = State()
+    time_manually = State()
 
 
 class UserCities(StatesGroup):

@@ -18,8 +18,8 @@ from layouts.handlers_layouts import del_messages_lo, order_message_lo
 router = Router()
 
 
-@router.callback_query(F.data == 'edit_channel_price')
-async def edit_channel_price(callback: CallbackQuery, state: FSMContext):
+@router.callback_query(F.data == 'edit_channel_info')
+async def edit_channel_info(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     await DelMsgsQs.add_msg_id(callback.from_user.id, callback.message.message_id)
 
@@ -171,8 +171,12 @@ async def edit_sch_photo_user(callback: CallbackQuery, state: FSMContext):
 
 
 @router.callback_query(F.data == 'edit_sch_datetime')
-async def edit_sch_datetime(callback: CallbackQuery):
+async def edit_sch_datetime(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
+
+    data = await state.get_data()
+    if 'time_manually' in data:
+        await state.update_data(time_manually=False)
 
     message = await callback.message.answer("Выберите новую дату публикации",
                                   reply_markup=await SimpleCalendar().start_calendar())
@@ -344,7 +348,6 @@ async def edit_post_photo(msg: Message, state: FSMContext):
         message = await msg.answer("Фото публикации успешно изменено!")
 
         await del_messages_lo(msg.from_user.id)
-
     else:
         await state.set_state(EditPost.photo)
         message = await msg.answer("Отправьте новое фото")

@@ -221,3 +221,25 @@ class ChannelsQs:
             print(e)
         else:
             return channel
+
+    @staticmethod
+    async def get_channels_names():
+        try:
+            async with async_session_factory() as session:
+                query = select(Channels.channel_id, Channels.channel_name)
+                res = await session.execute(query)
+                channels_names = res.all()
+        except Exception as e:
+            print(e)
+        else:
+            return channels_names
+
+    @staticmethod
+    async def update_ch_name(ch_id: int, ch_name: str):
+        try:
+            async with async_session_factory() as session:
+                stmt = update(Channels).where(Channels.channel_id == ch_id).values(channel_name=ch_name)
+                await session.execute(stmt)
+                await session.commit()
+        except Exception as e:
+            print(e)

@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta
+
 from aiogram import Router, F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message
@@ -8,9 +10,11 @@ from database.FSM import UserText, UserCities
 from database.channels import ChannelsQs
 from database.delete_msgs import DelMsgsQs
 from database.package_pins import PackagePinsQs
+from database.scheduled_msgs import SchMsgsQs
 from handlers.callback_factories import UserCityStatusCF, PinCF, UserCityCF, PackagesCF, PinPackagesCF
+from keyboards.time_picker import time_picker_kb
 from keyboards.user_kbs import example_kb, back_user_text_kb, photo_user_kb, edit_final_kb, package_confirm_kb, \
-    pin_package_confirm_kb
+    pin_package_confirm_kb, time_manually_kb, time_manually_confirm_kb
 from layouts.handlers_layouts import choice_user_first_city, del_messages_lo, pin_lo
 
 router = Router()
@@ -585,3 +589,59 @@ async def without_photo(callback: CallbackQuery):
     await callback.message.edit_text("Выберите дату публикации")
     await callback.message.edit_reply_markup(reply_markup=await SimpleCalendar().start_calendar())
 
+
+@router.callback_query(F.data == 'time_manually')
+async def time_manually(callback: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    await state.set_state(UserText.time_manually)
+    await callback.message.edit_text(f"Вы выбрали {data['date_cal']}\n\n"
+                                     f"Напишите время публикации в формате ЧЧ:ММ (MSK)")
+    await callback.message.edit_reply_markup(reply_markup=time_manually_kb())
+
+
+@router.callback_query(F.data == 'time_back')
+async def time_picker_back(callback: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    if 'time_manually' in data:
+        await state.update_data(time_manually=False)
+    await callback.message.edit_text(f"Вы выбрали {data['date_cal']}\n\n"
+                                     f"Выберите время публикации (MSK)")
+    await callback.message.edit_reply_markup(reply_markup=time_picker_kb(12, 0))
+
+
+@router.message(UserText.time_manually)
+async def time_manually_entered(msg: Message, state: FSMContext):
+    await DelMsgsQs.add_msg_id(msg.from_user.id, msg.message_id)
+
+    time_list = msg.text.split(':')
+
+    if (len(time_list) == 2) and (int(time_list[0]) in range(24)) and (int(time_list[1]) in range(60)) \
+            and (len(time_list[0]) == 2) and (len(time_list[1]) == 2):
+        await state.update_data(time=f'{time_list[0]}:{time_list[1]}', time_manually=True)
+        data = await state.get_data()
+
+        date_time = f"{data['date_cal']} {data['time']}"
+        f_date_time = datetime.strptime(date_time, "%d.%m.%Y %H:%M")
+
+        if data['role'] == 'user':
+            flag = await SchMsgsQs.check_time(f_date_time, data['cities'])
+        else:
+            flag = False
+
+        if flag:
+            message = await msg.answer(f"<b>К сожалению, время {data['time']} на дату {data['date_cal']} уже занято.</b>\n"
+                             f"Напишите пожалуйста другое время (MSK)!")
+            await state.set_state(UserText.time_manually)
+        elif f_date_time < (datetime.now() + timedelta(minutes=10)):
+            message = await msg.answer(f"<b>Напишите пожалуйста время, которое минимум на 10 минут больше нынешнего (MSK)!</b>")
+            await state.set_state(UserText.time_manually)
+        else:
+            message = await msg.answer(f"Вы выбрали время {data['time']} на дату {data['date_cal']}",
+                                       reply_markup=time_manually_confirm_kb())
+    else:
+        message = await msg.answer("<b>Вы ввели время в неправильном формате!</b>\n"
+                             "Необходимый формат: ЧЧ:ММ (MSK)\n"
+                             "Попробуйте еще раз!")
+        await state.set_state(UserText.time_manually)
+
+    await DelMsgsQs.add_msg_id(msg.from_user.id, message.message_id)

@@ -1,6 +1,8 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
+from handlers.callback_factories import TimePickerCF
+
 
 def example_kb() -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
@@ -94,6 +96,29 @@ def pin_package_confirm_kb() -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     kb.button(
         text="Подтвердить и оплатить", callback_data="payment_methods"
+    )
+    kb.adjust(1)
+    return kb.as_markup()
+
+
+def time_manually_kb() -> InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    kb.button(
+        text="Назад", callback_data="time_back"
+    )
+    kb.adjust(1)
+    return kb.as_markup()
+
+
+def time_manually_confirm_kb() -> InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    kb.button(
+        text="Подтвердить", callback_data=TimePickerCF(up_hour=False, down_hour=False, up_min=False,
+                                                       down_min=False, confirm=True, value=0, hour_cur=0,
+                                                       minute_cur=0)
+    )
+    kb.button(
+        text="Ввести другое время", callback_data="time_back"
     )
     kb.adjust(1)
     return kb.as_markup()
