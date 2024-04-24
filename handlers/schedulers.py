@@ -40,7 +40,8 @@ async def send_sch_msg(sch_msg_id: int):
     text = sch_msg[0]
     photo = sch_msg[1]
     pin = sch_msg[2]
-    channels = sch_msg[3]
+    country = sch_msg[3]
+    channels = sch_msg[4]
 
     counter = 0
 
@@ -51,12 +52,12 @@ async def send_sch_msg(sch_msg_id: int):
         try:
             if photo:
                 try:
-                    message = await bot.send_photo(channel_id, photo, caption=text, reply_markup=channel_msg_links_kb())
+                    message = await bot.send_photo(channel_id, photo, caption=text, reply_markup=channel_msg_links_kb(country))
                 except TelegramBadRequest:
                     await bot.send_photo(channel_id, photo)
-                    message = await bot.send_message(channel_id, text, reply_markup=channel_msg_links_kb())
+                    message = await bot.send_message(channel_id, text, reply_markup=channel_msg_links_kb(country))
             else:
-                message = await bot.send_message(channel_id, text, reply_markup=channel_msg_links_kb())
+                message = await bot.send_message(channel_id, text, reply_markup=channel_msg_links_kb(country))
 
             if pin:
                 await bot.pin_chat_message(channel_id, message.message_id, disable_notification=True)

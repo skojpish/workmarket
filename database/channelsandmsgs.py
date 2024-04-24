@@ -38,7 +38,8 @@ class ChannelsAndMsgsQs:
                 for ref in channels_ref:
                     channels.append(ref.channel.channel_id)
 
-                sch_msg_data = [sch_msg_ref[0].msg.msg_text, sch_msg_ref[0].msg.photo, sch_msg_ref[0].msg.pin, channels]
+                sch_msg_data = [sch_msg_ref[0].msg.msg_text, sch_msg_ref[0].msg.photo, sch_msg_ref[0].msg.pin,
+                                channels_ref[0].channel.country, channels]
 
         except Exception as e:
             print(e)

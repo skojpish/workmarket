@@ -14,6 +14,7 @@ from database.scheduled_msgs import SchMsgsQs
 from handlers.callback_factories import UserCityCF, AdminCityCF, PinCF, UserCityStatusCF, AdminCityStatusCF
 from handlers.schedulers import add_package_posts_job, add_package_pins_job
 from keyboards.admin_kbs import end_scheduled_kb
+from keyboards.time_picker import time_picker_kb
 from keyboards.user_kbs import end_scheduled_user_kb
 
 
@@ -361,3 +362,33 @@ async def pin_lo(callback, state, cat):
                                          f" + 2000 руб./неделя\n"
                                          f" + 4000 руб./месяц")
     await callback.message.edit_reply_markup(reply_markup=pin_kb())
+
+
+async def time_picker_lo(callback, callback_data, state):
+    await state.update_data(time=f'{callback_data.hour_cur:02}:{callback_data.minute_cur:02}')
+    data = await state.get_data()
+
+    date_time = f"{data['date_cal']} {data['time']}"
+    f_date_time = datetime.strptime(date_time, "%d.%m.%Y %H:%M")
+
+    if data['role'] == 'user':
+        flag = await SchMsgsQs.check_time(f_date_time, data['cities'])
+    else:
+        flag = False
+
+    if flag:
+        await callback.message.edit_text(f"Вы выбрали {data['date_cal']}\n\n"
+                                         f"<b>К сожалению, время {data['time']} на дату {data['date_cal']} уже занято.</b>\n"
+                                         f"Выберите пожалуйста другое время (MSK)!")
+        await callback.message.edit_reply_markup(reply_markup=time_picker_kb(callback_data.hour_cur,
+                                                                             callback_data.minute_cur))
+    elif f_date_time < (datetime.now() + timedelta(minutes=10)):
+        try:
+            await callback.message.edit_text(f"Вы выбрали {data['date_cal']}\n\n"
+                                             f"<b>Выберите пожалуйста время, которое минимум на 10 минут больше нынешнего (MSK)!</b>")
+        except:
+            pass
+        await callback.message.edit_reply_markup(reply_markup=time_picker_kb(callback_data.hour_cur,
+                                                                             callback_data.minute_cur))
+    else:
+        await order_message_lo(callback, state, data)

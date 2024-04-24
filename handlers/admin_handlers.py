@@ -1,4 +1,4 @@
-from datetime import datetime, date, timedelta
+from datetime import datetime, date
 
 from aiogram import Router, F
 from aiogram.filters import ChatMemberUpdatedFilter, IS_NOT_MEMBER, ADMINISTRATOR
@@ -19,7 +19,7 @@ from handlers.callback_factories import TimePickerCF, ChannelCountryCF, ChannelN
 from keyboards.admin_kbs import add_channel_kb, bot_management_kb, photo_adm_kb
 from keyboards.time_picker import time_picker_kb
 from keyboards.user_kbs import edit_final_kb
-from layouts.handlers_layouts import del_messages_lo, order_message_lo, choice_admin_city
+from layouts.handlers_layouts import del_messages_lo, order_message_lo, choice_admin_city, time_picker_lo
 
 router = Router()
 
@@ -82,21 +82,8 @@ async def add_country_admin(callback: CallbackQuery, callback_data: ChannelCount
 
     await DelMsgsQs.add_msg_id(callback.from_user.id, callback.message.message_id)
 
-    if callback_data.country == 'Россия':
-        await state.set_state(AddChannel.city)
-        message = await callback.message.answer("Напишите город")
-    else:
-        data = await state.get_data()
-
-        d = {
-            'ch_id': data['channel_id'],
-            'ch_name': data['channel_name'],
-            'country': data['country']
-        }
-
-        await ChannelsQs.add_channel(**d)
-        message = await callback.message.answer("Канал успешно добавлен!", reply_markup=add_channel_kb())
-        await del_messages_lo(callback.from_user.id)
+    await state.set_state(AddChannel.city)
+    message = await callback.message.answer("Напишите город")
 
     await DelMsgsQs.add_msg_id(callback.from_user.id, message.message_id)
     await callback.answer()
@@ -108,22 +95,10 @@ async def add_country_state(msg: Message, state: FSMContext):
 
     await state.update_data(country=msg.text)
 
-    if msg.text == "Россия":
-        await state.set_state(AddChannel.city)
+    await state.set_state(AddChannel.city)
 
-        message = await msg.answer("Напишите город")
-    else:
-        data = await state.get_data()
+    message = await msg.answer("Напишите город")
 
-        d = {
-            'ch_id': data['channel_id'],
-            'ch_name': data['channel_name'],
-            'country': data['country']
-        }
-
-        await ChannelsQs.add_channel(**d)
-        message = await msg.answer("Канал успешно добавлен!", reply_markup=add_channel_kb())
-        await del_messages_lo(msg.from_user.id)
     await DelMsgsQs.add_msg_id(msg.from_user.id, message.message_id)
 
 
@@ -131,11 +106,24 @@ async def add_country_state(msg: Message, state: FSMContext):
 async def add_city_state(msg: Message, state: FSMContext):
     await DelMsgsQs.add_msg_id(msg.from_user.id, msg.message_id)
 
-    await state.update_data(city=msg.text)
-    await state.set_state(AddChannel.price_vac)
+    if msg.text == "Россия":
+        await state.update_data(city=msg.text)
+        await state.set_state(AddChannel.price_vac)
 
-    message = await msg.answer("Напишите стоимость публикации вакансии")
+        message = await msg.answer("Напишите стоимость публикации вакансии")
+    else:
+        data = await state.get_data()
 
+        d = {
+            'ch_id': data['channel_id'],
+            'ch_name': data['channel_name'],
+            'country': data['country'],
+            'city': msg.text
+        }
+
+        await ChannelsQs.add_channel(**d)
+        message = await msg.answer("Канал успешно добавлен!", reply_markup=add_channel_kb())
+        await del_messages_lo(msg.from_user.id)
     await DelMsgsQs.add_msg_id(msg.from_user.id, message.message_id)
 
 
@@ -388,7 +376,10 @@ async def admin_cities(callback: CallbackQuery, state: FSMContext):
     cities = await ChannelsQs.get_all_cities_admin(data['country'])
     cities_all = ','.join(city for city in cities)
 
-    await state.update_data(cities=cities_all, all_cities='Во всех российских городах сети WorkMarket')
+    await state.update_data(cities=cities_all)
+
+    if data['country'] == 'Россия':
+        await state.update_data(all_cities='Во всех российских городах сети WorkMarket')
 
     await DelMsgsQs.add_msg_id(callback.from_user.id, callback.message.message_id)
 
@@ -406,8 +397,10 @@ async def admin_cities(callback: CallbackQuery, state: FSMContext):
 
     data = await state.get_data()
 
+    new_line = '\n'
+
     await callback.message.edit_text(f"Вы выбрали следующие города:\n"
-                                     f"{data['all_cities']}")
+                                     f"{data['all_cities'] if 'all_cities' in data else new_line.join(city for city in cities)}")
     await callback.message.edit_reply_markup(reply_markup=city_all_kb())
 
 
@@ -536,36 +529,13 @@ async def time_confirm(callback: CallbackQuery, callback_data: TimePickerCF, sta
 
     data = await state.get_data()
 
-    if data['time_manually']:
-        await order_message_lo(callback, state, data)
-    else:
-        await state.update_data(time=f'{callback_data.hour_cur:02}:{callback_data.minute_cur:02}')
-        data = await state.get_data()
-
-        date_time = f"{data['date_cal']} {data['time']}"
-        f_date_time = datetime.strptime(date_time, "%d.%m.%Y %H:%M")
-
-        if data['role'] == 'user':
-            flag = await SchMsgsQs.check_time(f_date_time, data['cities'])
-        else:
-            flag = False
-
-        if flag:
-            await callback.message.edit_text(f"Вы выбрали {data['date_cal']}\n\n"
-                                             f"<b>К сожалению, время {data['time']} на дату {data['date_cal']} уже занято.</b>\n"
-                                             f"Выберите пожалуйста другое время (MSK)!")
-            await callback.message.edit_reply_markup(reply_markup=time_picker_kb(callback_data.hour_cur,
-                                                                                 callback_data.minute_cur))
-        elif f_date_time < (datetime.now() + timedelta(minutes=10)):
-            try:
-                await callback.message.edit_text(f"Вы выбрали {data['date_cal']}\n\n"
-                                                 f"<b>Выберите пожалуйста время, которое минимум на 10 минут больше нынешнего (MSK)!</b>")
-            except:
-                pass
-            await callback.message.edit_reply_markup(reply_markup=time_picker_kb(callback_data.hour_cur,
-                                                                                 callback_data.minute_cur))
-        else:
+    if 'time_manually' in data:
+        if data['time_manually']:
             await order_message_lo(callback, state, data)
+        else:
+            await time_picker_lo(callback, callback_data, state)
+    else:
+        await time_picker_lo(callback, callback_data, state)
 
 
 @router.callback_query(F.data == 'sch_confirm_all_msgs')

@@ -68,14 +68,21 @@ def edit_posts_kb() -> InlineKeyboardMarkup:
     return kb.as_markup()
 
 
-def channel_msg_links_kb() -> InlineKeyboardMarkup:
+def channel_msg_links_kb(country) -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     kb.add(InlineKeyboardButton(
         text="🌏СЕТЬ КАНАЛОВ↗️", url='https://t.me/workmarket_goroda'
     ))
-    kb.add(InlineKeyboardButton(
-        text="📩РАЗМЕСТИТЬ ПУБЛИКАЦИЮ↗️", url='https://t.me/WorkMarketsBot'
-    ))
+    if country == "Россия":
+        kb.add(InlineKeyboardButton(
+            text="📩РАЗМЕСТИТЬ ПУБЛИКАЦИЮ↗️", url='https://t.me/WorkMarketsBot'
+        ))
+    elif country == "Беларусь":
+        kb.add(InlineKeyboardButton(
+            text="📩РАЗМЕСТИТЬ ПУБЛИКАЦИЮ↗️", url='https://t.me/Workmarket_rb_bot'
+        ))
+    else:
+        pass
     kb.adjust(1)
     return kb.as_markup()
 
