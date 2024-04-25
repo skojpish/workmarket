@@ -307,12 +307,17 @@ async def packages_pin(callback: CallbackQuery):
 async def buy_pin_package(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
 
-    package_1 = '{:g}'.format(data['pin_package_sum'] * 0.5 * 2)
-    package_2 = '{:g}'.format(data['pin_package_sum'] * 0.4 * 3)
-    package_3 = '{:g}'.format(data['pin_package_sum'] * 0.3 * 4)
-    package_4 = '{:g}'.format(data['pin_package_sum'] * 0.2 * 5)
-    package_5 = '{:g}'.format(data['pin_package_sum'] * 0.1 * 10)
-    package_6 = '{:g}'.format(data['pin_package_sum'] * 0.05 * 15)
+    if data['cat'] == 'vac':
+        pin_package_sum = 3000
+    else:
+        pin_package_sum = 4000
+
+    package_1 = '{:g}'.format(pin_package_sum * 0.5 * 2)
+    package_2 = '{:g}'.format(pin_package_sum * 0.4 * 3)
+    package_3 = '{:g}'.format(pin_package_sum * 0.3 * 4)
+    package_4 = '{:g}'.format(pin_package_sum * 0.2 * 5)
+    package_5 = '{:g}'.format(pin_package_sum * 0.1 * 10)
+    package_6 = '{:g}'.format(pin_package_sum * 0.05 * 15)
 
     def buy_pin_package_kb() -> InlineKeyboardMarkup:
         kb = InlineKeyboardBuilder()
@@ -348,12 +353,12 @@ async def buy_pin_package(callback: CallbackQuery, state: FSMContext):
         return kb.as_markup()
 
     await callback.message.edit_text("<b>Стоимость пакетов</b>\n\n"
-                                     f"Пакет 1: 2 закрепления - скидка 50% (<s>{data['pin_package_sum'] * 2}</s> {package_1} руб.)\n"
-                                     f"Пакет 2: 3 закрепления - скидка 60% (<s>{data['pin_package_sum'] * 3}</s> {package_2} руб.)\n"
-                                     f"Пакет 3: 4 закрепления - скидка 70% (<s>{data['pin_package_sum'] * 4}</s> {package_3} руб.)\n"
-                                     f"Пакет 4: 5 закреплений - скидка 80% (<s>{data['pin_package_sum'] * 5}</s> {package_4} руб.)\n"
-                                     f"Пакет 5: 10 закреплений - скидка 90% (<s>{data['pin_package_sum'] * 10}</s> {package_5} руб.)\n"
-                                     f"Пакет 6: 15 закреплений - скидка 95% (<s>{data['pin_package_sum'] * 15}</s> {package_6} руб.)\n\n"
+                                     f"Пакет 1: 2 закрепления - скидка 50% (<s>{pin_package_sum * 2}</s> {package_1} руб.)\n"
+                                     f"Пакет 2: 3 закрепления - скидка 60% (<s>{pin_package_sum * 3}</s> {package_2} руб.)\n"
+                                     f"Пакет 3: 4 закрепления - скидка 70% (<s>{pin_package_sum * 4}</s> {package_3} руб.)\n"
+                                     f"Пакет 4: 5 закреплений - скидка 80% (<s>{pin_package_sum * 5}</s> {package_4} руб.)\n"
+                                     f"Пакет 5: 10 закреплений - скидка 90% (<s>{pin_package_sum * 10}</s> {package_5} руб.)\n"
+                                     f"Пакет 6: 15 закреплений - скидка 95% (<s>{pin_package_sum * 15}</s> {package_6} руб.)\n\n"
                                      f"Выберите один из пакетов")
     await callback.message.edit_reply_markup(reply_markup=buy_pin_package_kb())
 

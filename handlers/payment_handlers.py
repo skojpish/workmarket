@@ -73,8 +73,8 @@ async def payment_methods(callback: CallbackQuery, state: FSMContext):
 
             full_sum = sum(price)
 
-            if 'pin_sum' in data:
-                full_sum += data['pin_sum']
+        if 'pin_sum' in data:
+            full_sum += data['pin_sum']
 
         await state.update_data(full_sum=full_sum)
 

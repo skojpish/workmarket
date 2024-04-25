@@ -348,14 +348,12 @@ async def pin_lo(callback, state, cat):
         return kb.as_markup()
 
     if cat == 'vac':
-        await state.update_data(pin_package_sum=3000)
         await callback.message.edit_text(f"Хотели бы вы закрепить ваше объявление в канале?\n\n"
                                          f"Стоимость размещения с закреплением:\n"
                                          f" + 300 руб./сутки\n"
                                          f" + 1500 руб./неделя\n"
                                          f" + 3000 руб./месяц")
     elif cat == 'ad':
-        await state.update_data(pin_package_sum=4000)
         await callback.message.edit_text(f"Хотели бы вы закрепить ваше объявление в канале?\n\n"
                                          f"Стоимость размещения с закреплением:\n"
                                          f" + 500 руб./сутки\n"
