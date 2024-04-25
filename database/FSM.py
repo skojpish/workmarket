@@ -24,9 +24,7 @@ class MsgAllChannels(StatesGroup):
 
 
 class UserText(StatesGroup):
-    pin_day = State()
-    pin_week = State()
-    pin_month = State()
+    pin = State()
     text = State()
     photo = State()
     time_manually = State()

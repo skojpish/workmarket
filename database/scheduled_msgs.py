@@ -32,8 +32,9 @@ class SchMsgsQs:
     async def get_sch_msgs_user(user_id: int):
         try:
             async with async_session_factory() as session:
-                query = select(ScheduledMsgs.id, ScheduledMsgs.msg_text, ScheduledMsgs.date_time).where(
-                    ScheduledMsgs.user_id == user_id).order_by(ScheduledMsgs.date_time)
+                query = select(ScheduledMsgs.id, ScheduledMsgs.msg_text, ScheduledMsgs.date_time).where((
+                    ScheduledMsgs.user_id == user_id) & (ScheduledMsgs.date_time > datetime.now())).order_by(
+                    ScheduledMsgs.date_time)
                 res = await session.execute(query)
                 sch_msgs = res.all()
 

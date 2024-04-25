@@ -191,12 +191,30 @@ async def order_message_lo(callback, state, data):
     message_photo = None
 
     if data['role'] == 'admin':
+        if data['pin']:
+            if 'pin_day' in data:
+                pin_date = datetime.strptime(data['date_cal'], '%d.%m.%Y') + timedelta(days=data['pin_day'])
+
+                pin = f"до {data['time']} {pin_date.date().strftime('%d.%m.%Y')}"
+            elif 'pin_week' in data:
+                pin_date = datetime.strptime(data['date_cal'], '%d.%m.%Y') + timedelta(days=data['pin_week'] * 7)
+
+                pin = f"до {data['time']} {pin_date.date().strftime('%d.%m.%Y')}"
+            else:
+                pin_date = datetime.strptime(data['date_cal'], '%d.%m.%Y') + timedelta(days=data['pin_month'] * 30)
+
+                pin = f"до {data['time']} {pin_date.date().strftime('%d.%m.%Y')}"
+            await state.update_data(pin=f"{data['time']} {pin_date.date()}")
+        else:
+            pin = "Не закреплять"
+
         if 'photo' in data:
             try:
                 message = await callback.message.answer_photo(data['photo'], f"Вы ввели следующие данные:\n"
                                                                    f"Сообщение: {data['text']}\n"
                                                                    f"Дата: {data['date_cal']}\n"
-                                                                   f"Время: {data['time']}\n\n"
+                                                                   f"Время: {data['time']}\n"
+                                                                   f"Закрепление: {pin}\n\n"
                                                                    f"Города: {data['cities'] if 'all_cities' not in data else data['all_cities']}",
                                                     reply_markup=end_scheduled_kb(data))
             except TelegramBadRequest:
@@ -204,14 +222,16 @@ async def order_message_lo(callback, state, data):
                 message = await callback.message.answer(f"Вы ввели следующие данные:\n"
                                                                    f"Сообщение: {data['text']}\n"
                                                                    f"Дата: {data['date_cal']}\n"
-                                                                   f"Время: {data['time']}\n\n"
+                                                                   f"Время: {data['time']}\n"
+                                                                   f"Закрепление: {pin}\n\n"
                                                                    f"Города: {data['cities'] if 'all_cities' not in data else data['all_cities']}",
                                                     reply_markup=end_scheduled_kb(data))
         else:
             message = await callback.message.answer(f"Вы ввели следующие данные:\n"
                                                     f"Сообщение: {data['text']}\n"
                                                     f"Дата: {data['date_cal']}\n"
-                                                    f"Время: {data['time']}\n\n"
+                                                    f"Время: {data['time']}\n"
+                                                    f"Закрепление: {pin}\n\n"
                                                     f"Города: {data['cities'] if 'all_cities' not in data else data['all_cities']}",
                                           reply_markup=end_scheduled_kb(data))
     else:
@@ -310,7 +330,8 @@ async def confirm_payment_lo(callback, state):
 
         if 'photo' in data:
             d['photo'] = data['photo']
-        elif data['pin']:
+
+        if data['pin']:
             d['pin'] = datetime.strptime(data['pin'], '%H:%M %Y-%m-%d')
 
         await callback.message.delete_reply_markup()
@@ -318,10 +339,8 @@ async def confirm_payment_lo(callback, state):
         await callback.message.edit_text("Оплата проведена успешно!\n"
                                          "Посмотреть свои запланированные посты можно с помощью команды /posts")
 
-    await state.clear()
 
-
-async def pin_lo(callback, state, cat):
+async def pin_lo(callback, cat):
     def pin_kb() -> InlineKeyboardMarkup:
         kb = InlineKeyboardBuilder()
         kb.button(

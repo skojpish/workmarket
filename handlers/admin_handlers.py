@@ -15,7 +15,7 @@ from database.channels import ChannelsQs
 from database.delete_msgs import DelMsgsQs
 from database.scheduled_msgs import SchMsgsQs
 from handlers.callback_factories import TimePickerCF, ChannelCountryCF, ChannelNewCountryCF, MsgAllChannelsCF, \
-    ListOfChannelsCF, AdminCityCF, AdminCityStatusCF
+    ListOfChannelsCF, AdminCityCF, AdminCityStatusCF, PinCF
 from keyboards.admin_kbs import add_channel_kb, bot_management_kb, photo_adm_kb
 from keyboards.time_picker import time_picker_kb
 from keyboards.user_kbs import edit_final_kb
@@ -321,8 +321,6 @@ async def admin_city_add(msg: Message, state: FSMContext):
                     await state.update_data(cities=f'{entered_city}')
                 cities_list.remove(entered_city)
 
-        await del_messages_lo(msg.from_user.id)
-
         def city_add_kb() -> InlineKeyboardMarkup:
             kb = InlineKeyboardBuilder()
             kb.button(
@@ -354,6 +352,7 @@ async def admin_city_add(msg: Message, state: FSMContext):
         await msg.answer(f"Вы выбрали следующие города:\n"
                          f"{new_line.join(f'{city}' for city in cities)}",
                          reply_markup=city_add_kb())
+        await del_messages_lo(msg.from_user.id)
     else:
         message = await msg.answer(f"Данного города нет в списке, попробуйте ввести название еще раз!")
         await state.set_state(AdminCities.city)
@@ -406,11 +405,29 @@ async def admin_cities(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(AdminCityStatusCF.filter(F.next))
 async def admin_city_next(callback: CallbackQuery, state: FSMContext):
-    await callback.answer()
+    def pin_kb() -> InlineKeyboardMarkup:
+        kb = InlineKeyboardBuilder()
+        kb.button(
+            text="Закрепить посуточно", callback_data=PinCF(pin=True,
+                                                            format='day')
+        )
+        kb.button(
+            text="Закрепить понедельно", callback_data=PinCF(pin=True,
+                                                             format='week')
+        )
+        kb.button(
+            text="Закрепить помесячно", callback_data=PinCF(pin=True,
+                                                            format='month')
+        )
+        kb.button(
+            text="Не закреплять", callback_data=PinCF(pin=False,
+                                                      format='')
+        )
+        kb.adjust(1)
+        return kb.as_markup()
 
-    await state.set_state(MsgAllChannels.text)
-    await callback.message.delete_reply_markup()
-    await callback.message.edit_text("Напишите текст сообщения")
+    await callback.message.edit_text(f"Хотели бы вы закрепить ваше объявление в канале?")
+    await callback.message.edit_reply_markup(reply_markup=pin_kb())
 
     await DelMsgsQs.add_msg_id(callback.from_user.id, callback.message.message_id)
 
@@ -553,16 +570,14 @@ async def get_scheduled_info(callback: CallbackQuery, state: FSMContext):
 
     if 'photo' in data:
         d['photo'] = data['photo']
-        message = await callback.message.answer("Сообщение успешно запланировано!")
-        await DelMsgsQs.add_msg_id(callback.from_user.id, callback.message.message_id)
-        await del_messages_lo(callback.from_user.id)
-    else:
-        await callback.message.delete_reply_markup()
-        message = await callback.message.edit_text("Сообщение успешно запланировано!")
+
+    if data['pin']:
+        d['pin'] = datetime.strptime(data['pin'], '%H:%M %Y-%m-%d')
+
+    message = await callback.message.answer("Сообщение успешно запланировано!")
+    await DelMsgsQs.add_msg_id(callback.from_user.id, callback.message.message_id)
+    await del_messages_lo(callback.from_user.id)
 
     await DelMsgsQs.add_msg_id(callback.from_user.id, message.message_id)
     await SchMsgsQs.add_sch_msg_user(**d)
-    await state.clear()
-
-
 

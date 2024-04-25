@@ -6,7 +6,7 @@ from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram3_calendar import SimpleCalendar
 
-from database.FSM import UserText, UserCities
+from database.FSM import UserText, UserCities, MsgAllChannels
 from database.channels import ChannelsQs
 from database.delete_msgs import DelMsgsQs
 from database.package_pins import PackagePinsQs
@@ -23,12 +23,14 @@ router = Router()
 @router.callback_query(F.data == 'vacancy')
 async def vacancy_start(callback: CallbackQuery, state: FSMContext):
     await state.clear()
+    await state.update_data(role='user')
     await choice_user_first_city(callback, state, 'vac', 0)
 
 
 @router.callback_query(F.data == 'ad')
 async def ad_country(callback: CallbackQuery, state: FSMContext):
     await state.clear()
+    await state.update_data(role='user')
     await choice_user_first_city(callback, state, 'ad', 0)
 
 
@@ -57,8 +59,6 @@ async def city_add(msg: Message, state: FSMContext):
                 else:
                     await state.update_data(cities=f'{entered_city}')
                 cities_list.remove(entered_city)
-
-        await del_messages_lo(msg.from_user.id)
 
         def city_add_kb() -> InlineKeyboardMarkup:
             kb = InlineKeyboardBuilder()
@@ -93,6 +93,7 @@ async def city_add(msg: Message, state: FSMContext):
         await msg.answer(f"Вы выбрали следующие города:\n"
                               f"{new_line.join(f'{city[0]} ({city[1]} руб.)' for city in cities)}",
                          reply_markup=city_add_kb())
+        await del_messages_lo(msg.from_user.id)
     else:
         message = await msg.answer(f"Данного города нет в списке, попробуйте ввести название еще раз!")
         await state.set_state(UserCities.city)
@@ -269,9 +270,9 @@ async def city_next(callback: CallbackQuery, state: FSMContext):
             await callback.message.edit_text(f"У вас осталось <b>{users_pckg_info[0]}</b> закреплений на месяц")
             await callback.message.edit_reply_markup(reply_markup=package_kb())
         else:
-            await pin_lo(callback, state, data['cat'])
+            await pin_lo(callback, data['cat'])
     except TypeError:
-        await pin_lo(callback, state, data['cat'])
+        await pin_lo(callback, data['cat'])
 
 
 @router.callback_query(F.data == 'packages_pin')
@@ -379,19 +380,17 @@ async def buy_pin_package_cf(callback: CallbackQuery, callback_data: PinPackages
 
 @router.callback_query(PinCF.filter(F.pin == True))
 async def pin_true(callback: CallbackQuery, state: FSMContext, callback_data: PinCF):
-    await state.update_data(role='user')
+    await state.set_state(UserText.pin)
+    await callback.message.delete_reply_markup()
 
     if callback_data.format == 'day':
-        await state.set_state(UserText.pin_day)
-        await callback.message.delete_reply_markup()
+        await state.update_data(pin_day=True)
         await callback.message.edit_text(f"Напишите количество дней")
     elif callback_data.format == 'week':
-        await state.set_state(UserText.pin_week)
-        await callback.message.delete_reply_markup()
+        await state.update_data(pin_week=True)
         await callback.message.edit_text(f"Напишите количество недель")
-    elif callback_data.format == 'month':
-        await state.set_state(UserText.pin_month)
-        await callback.message.delete_reply_markup()
+    else:
+        await state.update_data(pin_month=True)
         await callback.message.edit_text(f"Напишите количество месяцев")
 
     await DelMsgsQs.add_msg_id(callback.from_user.id, callback.message.message_id)
@@ -399,111 +398,85 @@ async def pin_true(callback: CallbackQuery, state: FSMContext, callback_data: Pi
 
 @router.callback_query(PinCF.filter(F.pin == False))
 async def pin_false(callback: CallbackQuery, callback_data: PinCF, state: FSMContext):
-    data = await state.get_data()
-
-    if callback_data.format == 'pin_package':
-        await state.update_data(role='user', pin=True, pin_month=1)
-    else:
-        await state.update_data(role='user', pin=False)
-
     await DelMsgsQs.add_msg_id(callback.from_user.id, callback.message.message_id)
 
-    await state.set_state(UserText.text)
+    data = await state.get_data()
 
-    if data['cat'] == 'vac':
-        await callback.message.edit_text("Пожалуйста, отправьте боту готовый текст по следующему образцу:\n"
-                                         "1. Название должности, заработная плата, адрес:\n"
-                                         "2. Обязанности:\n"
-                                         "3. Требования:\n"
-                                         "4. Мы предлагаем:\n"
-                                         "5. Контакты:\n")
-        await callback.message.edit_reply_markup(reply_markup=example_kb())
-    elif data['cat'] == 'ad':
+    if data['role'] == 'user':
+        if callback_data.format == 'pin_package':
+            await state.update_data(pin=True, pin_month=1)
+        else:
+            await state.update_data(pin=False)
+
+        await state.set_state(UserText.text)
+
+        if data['cat'] == 'vac':
+            await callback.message.edit_text("Пожалуйста, отправьте боту готовый текст по следующему образцу:\n"
+                                             "1. Название должности, заработная плата, адрес:\n"
+                                             "2. Обязанности:\n"
+                                             "3. Требования:\n"
+                                             "4. Мы предлагаем:\n"
+                                             "5. Контакты:\n")
+            await callback.message.edit_reply_markup(reply_markup=example_kb())
+        else:
+            await callback.message.delete_reply_markup()
+            await callback.message.edit_text("Отправьте боту текст рекламного поста")
+    else:
+        await state.update_data(pin=False)
+        await state.set_state(MsgAllChannels.text)
         await callback.message.delete_reply_markup()
-        await callback.message.edit_text("Отправьте боту текст рекламного поста")
+        await callback.message.edit_text("Напишите текст сообщения")
 
 
-@router.message(UserText.pin_day)
-async def pin_days(msg: Message, state: FSMContext):
+@router.message(UserText.pin)
+async def pin_state(msg: Message, state: FSMContext):
     await DelMsgsQs.add_msg_id(msg.from_user.id, msg.message_id)
 
-    try:
-        await state.update_data(pin=True, pin_day=int(msg.text))
-        await state.set_state(UserText.text)
-
-        data = await state.get_data()
-
-        if data['cat'] == 'vac':
-            await state.update_data(pin_sum=data['pin_day'] * 300)
-            message = await msg.answer("Пожалуйста, отправьте боту готовый текст по следующему образцу:\n"
-                                       "1. Название должности, заработная плата, адрес:\n"
-                                       "2. Обязанности:\n"
-                                       "3. Требования:\n"
-                                       "4. Мы предлагаем:\n"
-                                       "5. Контакты:\n", reply_markup=example_kb())
-        else:
-            await state.update_data(pin_sum=data['pin_day'] * 500)
-            message = await msg.answer("Отправьте боту текст рекламного поста")
-    except ValueError:
-        await state.set_state(UserText.pin_day)
-        message = await msg.answer('Введите количество дней')
-
-    await DelMsgsQs.add_msg_id(msg.from_user.id, message.message_id)
-
-
-@router.message(UserText.pin_week)
-async def pin_week(msg: Message, state: FSMContext):
-    await DelMsgsQs.add_msg_id(msg.from_user.id, msg.message_id)
+    data = await state.get_data()
 
     try:
-        await state.update_data(pin=True, pin_week=int(msg.text))
+        if data['role'] == 'user':
+            await state.set_state(UserText.text)
 
-        await state.set_state(UserText.text)
+            if data['cat'] == 'vac':
+                if 'pin_day' in data:
+                    await state.update_data(pin=True, pin_day=int(msg.text), pin_sum=int(msg.text) * 300)
+                elif 'pin_week' in data:
+                    await state.update_data(pin=True, pin_week=int(msg.text), pin_sum=int(msg.text) * 1500)
+                else:
+                    await state.update_data(pin=True, pin_month=int(msg.text), pin_sum=int(msg.text) * 3000)
 
-        data = await state.get_data()
-
-        if data['cat'] == 'vac':
-            await state.update_data(pin_sum=data['pin_week']*1500)
-            message = await msg.answer("Пожалуйста, отправьте боту готовый текст по следующему образцу:\n"
-                                       "1. Название должности, заработная плата, адрес:\n"
-                                       "2. Обязанности:\n"
-                                       "3. Требования:\n"
-                                       "4. Мы предлагаем:\n"
-                                       "5. Контакты:\n", reply_markup=example_kb())
+                message = await msg.answer("Пожалуйста, отправьте боту готовый текст по следующему образцу:\n"
+                                           "1. Название должности, заработная плата, адрес:\n"
+                                           "2. Обязанности:\n"
+                                           "3. Требования:\n"
+                                           "4. Мы предлагаем:\n"
+                                           "5. Контакты:\n", reply_markup=example_kb())
+            else:
+                if 'pin_day' in data:
+                    await state.update_data(pin=True, pin_day=int(msg.text), pin_sum=int(msg.text) * 500)
+                elif 'pin_week' in data:
+                    await state.update_data(pin=True, pin_week=int(msg.text), pin_sum=int(msg.text) * 2000)
+                else:
+                    await state.update_data(pin=True, pin_month=int(msg.text), pin_sum=int(msg.text) * 4000)
+                message = await msg.answer("Отправьте боту текст рекламного поста")
         else:
-            await state.update_data(pin_sum=data['pin_week'] * 2000)
-            message = await msg.answer("Отправьте боту текст рекламного поста")
+            await state.set_state(MsgAllChannels.text)
+            if 'pin_day' in data:
+                await state.update_data(pin=True, pin_day=int(msg.text))
+            elif 'pin_week' in data:
+                await state.update_data(pin=True, pin_week=int(msg.text))
+            else:
+                await state.update_data(pin=True, pin_month=int(msg.text))
+            message = await msg.answer("Напишите текст сообщения")
     except ValueError:
-        await state.set_state(UserText.pin_week)
-        message = await msg.answer('Введите количество недель')
-
-    await DelMsgsQs.add_msg_id(msg.from_user.id, message.message_id)
-
-
-@router.message(UserText.pin_month)
-async def pin_month(msg: Message, state: FSMContext):
-    await DelMsgsQs.add_msg_id(msg.from_user.id, msg.message_id)
-
-    try:
-        await state.update_data(pin=True, pin_month=int(msg.text))
-        await state.set_state(UserText.text)
-
-        data = await state.get_data()
-
-        if data['cat'] == 'vac':
-            await state.update_data(pin_sum=data['pin_month'] * 3000)
-            message = await msg.answer("Пожалуйста, отправьте боту готовый текст по следующему образцу:\n"
-                                       "1. Название должности, заработная плата, адрес:\n"
-                                       "2. Обязанности:\n"
-                                       "3. Требования:\n"
-                                       "4. Мы предлагаем:\n"
-                                       "5. Контакты:\n", reply_markup=example_kb())
+        await state.set_state(UserText.pin)
+        if 'pin_day' in data:
+            message = await msg.answer('Введите количество дней')
+        elif 'pin_week' in data:
+            message = await msg.answer('Введите количество недель')
         else:
-            await state.update_data(pin_sum=data['pin_month'] * 4000)
-            message = await msg.answer("Отправьте боту текст рекламного поста")
-    except ValueError:
-        await state.set_state(UserText.pin_week)
-        message = await msg.answer('Введите количество недель')
+            message = await msg.answer('Введите количество месяцев')
 
     await DelMsgsQs.add_msg_id(msg.from_user.id, message.message_id)
 

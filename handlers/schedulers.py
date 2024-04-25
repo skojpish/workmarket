@@ -67,7 +67,10 @@ async def send_sch_msg(sch_msg_id: int):
 
         counter += 1
 
-    await ChannelsAndMsgsQs.del_sch_msgs(sch_msg_id)
+    if pin:
+        pass
+    else:
+        await ChannelsAndMsgsQs.del_sch_msgs(sch_msg_id)
 
 
 async def add_unpin_msg_job(sch_msg_id: int, unpin_msg_id: int, date_time: datetime):
