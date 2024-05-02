@@ -98,7 +98,7 @@ class ChannelsQs:
             return cities
 
     @staticmethod
-    async def get_channels(starting_point):
+    async def get_channels(starting_point: int):
         try:
             async with async_session_factory() as session:
                 query = select(Channels.channel_name, Channels.country, Channels.price_vac, Channels.price_ad).order_by(
@@ -124,7 +124,7 @@ class ChannelsQs:
             return channels
 
     @staticmethod
-    async def get_channels_id_ref_admin(country):
+    async def get_channels_id_ref_admin(country: str):
         try:
             async with async_session_factory() as session:
                 query = select(Channels.id).where(Channels.country == country)
@@ -182,7 +182,7 @@ class ChannelsQs:
             print(e)
 
     @staticmethod
-    async def update_price(channel_name, new_price, cat):
+    async def update_price(channel_name: str, new_price: int, cat: str):
         try:
             async with async_session_factory() as session:
                 if cat == 'vac':

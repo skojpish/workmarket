@@ -106,7 +106,9 @@ async def add_country_state(msg: Message, state: FSMContext):
 async def add_city_state(msg: Message, state: FSMContext):
     await DelMsgsQs.add_msg_id(msg.from_user.id, msg.message_id)
 
-    if msg.text == "Россия":
+    data = await state.get_data()
+
+    if data['country'] == "Россия":
         await state.update_data(city=msg.text)
         await state.set_state(AddChannel.price_vac)
 
@@ -350,7 +352,7 @@ async def admin_city_add(msg: Message, state: FSMContext):
         cities = data['cities'].split(',')
 
         await msg.answer(f"Вы выбрали следующие города:\n"
-                         f"{new_line.join(f'{city}' for city in cities)}",
+                         f"{new_line.join(f'{cities.index(city) + 1}. {city}' for city in cities)}",
                          reply_markup=city_add_kb())
         await del_messages_lo(msg.from_user.id)
     else:
@@ -399,12 +401,12 @@ async def admin_cities(callback: CallbackQuery, state: FSMContext):
     new_line = '\n'
 
     await callback.message.edit_text(f"Вы выбрали следующие города:\n"
-                                     f"{data['all_cities'] if 'all_cities' in data else new_line.join(city for city in cities)}")
+                                     f"{data['all_cities'] if 'all_cities' in data else new_line.join(f'{cities.index(city) + 1}. {city}' for city in cities)}")
     await callback.message.edit_reply_markup(reply_markup=city_all_kb())
 
 
 @router.callback_query(AdminCityStatusCF.filter(F.next))
-async def admin_city_next(callback: CallbackQuery, state: FSMContext):
+async def admin_city_next(callback: CallbackQuery):
     def pin_kb() -> InlineKeyboardMarkup:
         kb = InlineKeyboardBuilder()
         kb.button(

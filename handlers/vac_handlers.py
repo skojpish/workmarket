@@ -91,7 +91,7 @@ async def city_add(msg: Message, state: FSMContext):
         cities = await ChannelsQs.get_user_cities(list_cities, data['cat'])
 
         await msg.answer(f"Вы выбрали следующие города:\n"
-                              f"{new_line.join(f'{city[0]} ({city[1]} руб.)' for city in cities)}",
+                              f"{new_line.join(f'{cities.index(city)+1}. {city[0]} ({city[1]} руб.)' for city in cities)}",
                          reply_markup=city_add_kb())
         await del_messages_lo(msg.from_user.id)
     else:

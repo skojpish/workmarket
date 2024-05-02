@@ -31,8 +31,8 @@ async def main() -> None:
         await setup_bot_commands()
         await bot.delete_webhook(drop_pending_updates=True)
         await dp.start_polling(bot)
-    except Exception:
-        print("there is an exception")
+    except Exception as e:
+        print(e)
 
 
 if __name__ == "__main__":

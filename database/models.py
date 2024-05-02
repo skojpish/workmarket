@@ -19,7 +19,8 @@ class Channels(Base):
     price_vac: Mapped[int] = mapped_column(nullable=True)
     price_ad: Mapped[int] = mapped_column(nullable=True)
 
-    channel_id_ref: Mapped['ChannelsAndMsgs'] = relationship(back_populates='channel')
+    channel_id_ref: Mapped['ChannelsAndMsgs'] = relationship(back_populates='channel', cascade="all,delete")
+
 
 class DeleteMsgs(Base):
     __tablename__ = "delete_msgs"
@@ -50,7 +51,7 @@ class ChannelsAndMsgs(Base):
     channel_id: Mapped[int] = mapped_column(ForeignKey("channels.id"))
 
     msg: Mapped['ScheduledMsgs'] = relationship(back_populates="msg_id_ref", cascade="all,delete")
-    channel: Mapped['Channels'] = relationship(back_populates="channel_id_ref")
+    channel: Mapped['Channels'] = relationship(back_populates="channel_id_ref", cascade="all,delete")
 
 
 class ChannelsInfo(Base):

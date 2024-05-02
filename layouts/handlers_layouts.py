@@ -21,7 +21,8 @@ from keyboards.user_kbs import end_scheduled_user_kb
 async def start_message_lo(msg, state, kb):
     await state.clear()
     message = await msg.answer(f"Здравствуйте, {msg.from_user.full_name}!\n\n"
-                     f"Этот бот поможет Вам разместить вакансию или рекламу в сети телеграм каналов Workmarket.",
+                     f"Этот бот поможет Вам разместить вакансию или рекламу по всем городам России 🇷🇺 "
+                               f"в сети телеграм каналов Workmarket https://t.me/workmarket_goroda",
                      reply_markup=kb())
     await bot.delete_message(msg.from_user.id, msg.message_id)
     await DelMsgsQs.add_msg_id(msg.from_user.id, message.message_id)
@@ -96,7 +97,8 @@ async def choice_city_lo(callback, state, starting_point):
     if cities:
         await callback.message.edit_text(f"{new_line.join(f'{cities.index(city) + 1 + starting_point}. {city[0]} ({city[1]} руб.)' for city in cities[0:100])}\n\n"
                                          f"Напишите название города из списка представленного выше или укажите несколько городов, "
-                                         f"где вы хотели бы разместить публикацию, по следующему образцу:\n"
+                                         f"где вы хотели бы разместить публикацию, через запятую (после каждой запятой пробел обязателен)\n"
+                                         f"Например:\n"
                                          f"Город1, Город2, Город3")
         await callback.message.edit_reply_markup(reply_markup=city_kb())
     else:
@@ -178,7 +180,8 @@ async def choice_admin_city(callback, starting_point, state, country):
     if cities:
         await callback.message.edit_text(f"{new_line.join(f'{cities.index(city)+1+starting_point}. {city}' for city in cities[0:100])}\n\n"
                                          f"Напишите название города из списка представленного выше или укажите несколько городов, "
-                                         f"где вы хотели бы разместить публикацию, по следующему образцу:\n"
+                                         f"где вы хотели бы разместить публикацию, через запятую (после каждой запятой пробел обязателен)\n"
+                                         f"Например:\n"
                                          f"Город1, Город2, Город3")
         await callback.message.edit_reply_markup(reply_markup=city_kb())
     else:
