@@ -82,7 +82,7 @@ async def add_unpin_msg_job(sch_msg_id: int, unpin_msg_id: int, date_time: datet
 async def unpin_msg(sch_msg_id: int, msg_id: int):
     sch_msg = await ChannelsAndMsgsQs.get_ref(sch_msg_id)
 
-    channels = sch_msg[3]
+    channels = sch_msg[4]
 
     for channel_id in channels:
         try:

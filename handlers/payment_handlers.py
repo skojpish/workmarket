@@ -63,7 +63,7 @@ async def payment_methods(callback: CallbackQuery, state: FSMContext):
         elif 'pin_package_sum' in data:
             full_sum = data['pin_package_sum']
         elif 'all_cities' in data:
-            full_sum = int('{:g}'.format(data['all_cities_sum']*0.7))
+            full_sum = int(data['all_cities_sum'])
         else:
             channels = await ChannelsQs.get_user_cities(data['cities'].split(','), data['cat'])
             price = []

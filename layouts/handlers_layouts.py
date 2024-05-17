@@ -49,10 +49,9 @@ async def choice_city_lo(callback, state, starting_point):
 
     if 'all_cities_sum' not in data:
         cities_all = await ChannelsQs.get_all_cities(data['cat'])
-        prices = []
-        for price in cities_all:
-            prices.append(price[1])
-        await state.update_data(all_cities_sum=sum(prices))
+        all_sum = 4500 if data['cat'] == 'vac' else len(cities_all) * 99
+
+        await state.update_data(all_cities_sum=all_sum)
 
     data = await state.get_data()
 
@@ -79,13 +78,13 @@ async def choice_city_lo(callback, state, starting_point):
                 )
             )
         kb.button(
-            text=f"Во всех городах {'{:g}'.format(data['all_cities_sum'] * 0.7)} руб. (скидка 30%)",
+            text=f"Во всех городах ({data['all_cities_sum']} руб.)",
             callback_data=UserCityCF(
                 all=True)
         )
         kb.button(
-            text=f"Пакетное размещение (скидка до 95%)",
-            callback_data="packages"
+            text=f"Пакетное размещение",
+            url='https://t.me/Workmarket_rf_bot'
         )
         kb.adjust(1)
         return kb.as_markup()
@@ -361,10 +360,6 @@ async def pin_lo(callback, cat):
         kb.button(
             text="Не закреплять", callback_data=PinCF(pin=False,
                                                       format='')
-        )
-        kb.button(
-            text=f"Пакетное закрепление (скидка до 95%)",
-            callback_data="packages_pin"
         )
         kb.adjust(1)
         return kb.as_markup()
