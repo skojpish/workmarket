@@ -10,6 +10,9 @@ def start_kb() -> InlineKeyboardMarkup:
     kb.add(InlineKeyboardButton(
         text="Разместить рекламу", callback_data="ad"
     ))
+    kb.add(InlineKeyboardButton(
+        text="Связаться с менеджером", url='https://t.me/workmarket_manager'
+    ))
     kb.adjust(1)
     return kb.as_markup()
 

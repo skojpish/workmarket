@@ -68,7 +68,7 @@ class ChannelsQs:
             return cities
 
     @staticmethod
-    async def get_all_cities_admin(country: str):
+    async def get_all_country_cities_admin(country: str):
         try:
             async with async_session_factory() as session:
                 query = select(Channels.city).where(Channels.country == country).order_by(
@@ -79,6 +79,19 @@ class ChannelsQs:
             print(e)
         else:
             return cities
+
+    @staticmethod
+    async def get_all_cities_admin():
+        try:
+            async with async_session_factory() as session:
+                query = select(Channels.city)
+                res = await session.execute(query)
+                cities = res.scalars().all()
+        except Exception as e:
+            print(e)
+        else:
+            return cities
+
 
     @staticmethod
     async def get_user_cities(cities: list, cat: str):
@@ -111,10 +124,23 @@ class ChannelsQs:
             return channels
 
     @staticmethod
-    async def get_all_channels():
+    async def get_all_channels_russia():
         try:
             async with async_session_factory() as session:
                 query = select(Channels.channel_name).where(Channels.country == 'Россия').order_by(
+                    Channels.channel_name)
+                res = await session.execute(query)
+                channels = res.scalars().all()
+        except Exception as e:
+            print(e)
+        else:
+            return channels
+
+    @staticmethod
+    async def get_all_channels():
+        try:
+            async with async_session_factory() as session:
+                query = select(Channels.channel_name).order_by(
                     Channels.channel_name)
                 res = await session.execute(query)
                 channels = res.scalars().all()

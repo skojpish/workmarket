@@ -55,14 +55,22 @@ async def cmd_posts(msg: Message, state: FSMContext) -> None:
 
         await state.update_data(msg_ids=msg_ids)
 
+        all_chnnls_russia = await ChannelsQs.get_all_channels_russia()
         all_chnnls = await ChannelsQs.get_all_channels()
         double_new_line = "\n\n"
 
         def post_layout(index, text, date, time, chnnls):
+            if sorted(chnnls) == sorted(all_chnnls_russia):
+                cities_msg = "Во всех российских городах сети WorkMarket"
+            elif sorted(chnnls) == sorted(all_chnnls):
+                cities_msg = "Во всех городах сети WorkMarket"
+            else:
+                cities_msg = ', '.join(chnnls)
+
             return (f"<b>{index}.</b>\nКраткий текст: {text[0:15]}...\n"
                     f"Дата: {date}\n"
                     f"Время: {time}\n"
-                    f"Каналы: {', '.join(chnnls) if sorted(chnnls) != sorted(all_chnnls) else 'Во всех российских каналах сети WorkMarket'}")
+                    f"Каналы: {cities_msg}")
 
         message = await msg.answer(f"""<b>Список запланированных публикаций</b>\n\n{double_new_line.join(
             post_layout(i+1, sch_msgs[i][1], sch_msgs[i][2].strftime('%d.%m.%Y'), sch_msgs[i][2].strftime('%H:%M'), 

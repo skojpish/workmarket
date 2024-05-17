@@ -12,6 +12,7 @@ class ChannelNewCountryCF(CallbackData, prefix='cn'):
 
 class MsgAllChannelsCF(CallbackData, prefix='mac'):
     country: str
+    all_countries: bool
 
 
 class UserCityCF(CallbackData, prefix='uci'):

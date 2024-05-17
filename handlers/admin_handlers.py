@@ -261,7 +261,8 @@ async def del_channel_state(msg: Message, state: FSMContext):
 
 
 @router.callback_query(F.data == 'bot_management')
-async def bot_management_start(callback: CallbackQuery):
+async def bot_management_start(callback: CallbackQuery, state: FSMContext):
+    await state.update_data(role='admin')
     await callback.message.edit_text("Выберите раздел")
     await callback.message.edit_reply_markup(reply_markup=bot_management_kb())
 
@@ -275,8 +276,11 @@ async def send_message_to_all_channels(callback: CallbackQuery):
         if countries:
             for country in countries:
                 kb.button(
-                    text=f"{country}", callback_data=MsgAllChannelsCF(country=f'{country}')
+                    text=f"{country}", callback_data=MsgAllChannelsCF(country=f'{country}', all_countries=False)
                 )
+            kb.button(
+                text=f"Во все страны", callback_data=MsgAllChannelsCF(country='', all_countries=True)
+            )
         kb.adjust(1)
         return kb.as_markup()
 
@@ -284,15 +288,53 @@ async def send_message_to_all_channels(callback: CallbackQuery):
     await callback.message.edit_reply_markup(reply_markup=country_all_msg_kb())
 
 
-@router.callback_query(MsgAllChannelsCF.filter())
+@router.callback_query(MsgAllChannelsCF.filter(F.all_countries == False))
 async def add_country_admin(callback: CallbackQuery, callback_data: MsgAllChannelsCF, state: FSMContext):
     await callback.answer()
 
     await state.clear()
-    await state.update_data(role='admin', country=callback_data.country)
+    await state.update_data(country=callback_data.country)
     await state.set_state(AdminCities.city)
 
     await choice_admin_city(callback, 0, state, callback_data.country)
+
+    await DelMsgsQs.add_msg_id(callback.from_user.id, callback.message.message_id)
+
+
+@router.callback_query(MsgAllChannelsCF.filter(F.all_countries))
+async def all_countries_admin(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+
+    cities = await ChannelsQs.get_all_cities_admin()
+    cities_all = ','.join(city for city in cities)
+
+    await state.update_data(cities=cities_all)
+
+    await state.update_data(all_cities='Во всех городах сети WorkMarket')
+
+    def pin_kb() -> InlineKeyboardMarkup:
+        kb = InlineKeyboardBuilder()
+        kb.button(
+            text="Закрепить посуточно", callback_data=PinCF(pin=True,
+                                                            format='day')
+        )
+        kb.button(
+            text="Закрепить понедельно", callback_data=PinCF(pin=True,
+                                                             format='week')
+        )
+        kb.button(
+            text="Закрепить помесячно", callback_data=PinCF(pin=True,
+                                                            format='month')
+        )
+        kb.button(
+            text="Не закреплять", callback_data=PinCF(pin=False,
+                                                      format='')
+        )
+        kb.adjust(1)
+        return kb.as_markup()
+
+    await callback.message.edit_text(f"Хотели бы вы закрепить ваше объявление в канале?")
+    await callback.message.edit_reply_markup(reply_markup=pin_kb())
 
     await DelMsgsQs.add_msg_id(callback.from_user.id, callback.message.message_id)
 
@@ -304,11 +346,11 @@ async def admin_city_add(msg: Message, state: FSMContext):
     data_check = await state.get_data()
 
     if 'cities' in data_check:
-        cities_all = await ChannelsQs.get_all_cities_admin(data_check['country'])
+        cities_all = await ChannelsQs.get_all_country_cities_admin(data_check['country'])
         user_cities = data_check['cities'].split(',')
         cities_list = [city for city in cities_all if city not in user_cities]
     else:
-        cities = await ChannelsQs.get_all_cities_admin(data_check['country'])
+        cities = await ChannelsQs.get_all_country_cities_admin(data_check['country'])
         cities_list = [city for city in cities]
 
     admin_msg_list = msg.text.split(', ')
@@ -374,7 +416,7 @@ async def admin_city_add(callback: CallbackQuery, callback_data: AdminCityStatus
 async def admin_cities(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
 
-    cities = await ChannelsQs.get_all_cities_admin(data['country'])
+    cities = await ChannelsQs.get_all_country_cities_admin(data['country'])
     cities_all = ','.join(city for city in cities)
 
     await state.update_data(cities=cities_all)
